@@ -1,0 +1,1 @@
+Mikat, modern üretkenlik araçları ile manevi yaşam ritmini tek bir potada eriten kapsamlı bir kişisel takip asistanıdır. Canlı ezan vakitleri (AlAdhan API), Kur'an/hadis kütüphanesi, Pomodoro tekniği, gelişmiş alışkanlık ve görev takip motoru ile çevrimdışı (Offline PWA) tam uyumlu olarak çalışır.
