@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="tr" data-theme="light">
 
 <head>
   <!--
@@ -10,7 +10,7 @@
 -->
   <meta charset="UTF-8">
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://api.aladhan.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; frame-src 'none'; object-src 'none';">
+    content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; connect-src 'self' https://api.aladhan.com https://fonts.googleapis.com https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; img-src 'self' data:; frame-src 'none'; object-src 'none';">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#0d1117">
   <meta name="description"
@@ -20,20 +20,29 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Mikat">
   <title>Mikat — Zamanı Bereketlendir</title>
-  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.json">
   <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
-    href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Amiri+Quran&family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Scheherazade+New:wght@400;700&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
     rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  
+  <!-- NEXUS Auth Library & Guard (Safe Fallback for Standalone cPanel Deployment) -->
+  <script src="../nexus-auth.js" onerror="console.warn('NexusAuth not loaded (standalone mode)');"></script>
+  <script>if (typeof NexusAuth !== 'undefined' && typeof NexusAuth.requireAuth === 'function') { NexusAuth.requireAuth('../login.html'); }</script>
 </head>
 
-<body class="dark">
+<body class="light">
 
   <!-- ═══ ÜST BAR ═══ -->
   <div class="topbar">
     <div style="display:flex; align-items:center; gap:8px;">
+      <!-- Mobil Hamburger Butonu (sadece < 768px'de sol tarafta görünür) -->
+      <button class="tbtn hamburger-btn" id="hamburgerBtn" onclick="toggleMobileDrawer()" title="Menü"
+        aria-label="Menü" style="display:none;">☰</button>
       <div class="brand">
         <div class="brand-ico" style="background: none; border: none; padding: 0;">
           <img src="mikat-logo.png" alt="Mikat"
@@ -68,6 +77,56 @@
       </button>
       <button class="tbtn" onclick="openSettings()" title="Ayarlar"
         style="width:36px; height:36px; font-size:1.05rem;">⚙️</button>
+      <button class="tbtn" onclick="NexusAuth.logout('../login.html')" title="Çıkış Yap"
+        style="width:36px; height:36px; font-size:1.05rem; background: rgba(239, 68, 68, 0.1);">🚪</button>
+    </div>
+  </div>
+
+  <!-- ═══ MOBİL DRAWER (Sidebar Slide-in) ═══ -->
+  <div class="mobile-drawer-overlay" id="mobileDrawerOverlay" onclick="closeMobileDrawer()"></div>
+  <div class="mobile-drawer" id="mobileDrawer">
+    <div class="mobile-drawer-header">
+      <div class="drawer-title-wrap">
+        <span class="drawer-title">☰ Menü</span>
+      </div>
+      <button class="drawer-close-btn" onclick="closeMobileDrawer()" title="Kapat" aria-label="Kapat">✕</button>
+    </div>
+    <div class="mobile-drawer-menu">
+      <button class="menu-item-vertical on" onclick="showView('calendar', this); closeMobileDrawer();">📅 Takvim</button>
+      <button class="menu-item-vertical" onclick="showView('tasks', this); closeMobileDrawer();">📋 Görevler</button>
+      <button class="menu-item-vertical" onclick="showView('prayers', this); closeMobileDrawer();">🕌 Namaz</button>
+      <button class="menu-item-vertical" onclick="showView('zikir', this); closeMobileDrawer();">📿 Zikir &amp; Esmâ</button>
+      <button class="menu-item-vertical" onclick="showView('quran', this); closeMobileDrawer();">📖 Kuran</button>
+      <button class="menu-item-vertical" onclick="showView('habits', this); closeMobileDrawer();">📊 Analiz</button>
+      <button class="menu-item-vertical" onclick="showView('dua', this); closeMobileDrawer();">🤲 Dua &amp; Münâcât</button>
+      <button class="menu-item-vertical" onclick="showView('hadis', this); closeMobileDrawer();">📜 40 Hadis</button>
+      <button class="menu-item-vertical" data-view="books" style="display: none;" onclick="showView('books', this); closeMobileDrawer();">📚 Kitaplık</button>
+      <button class="menu-item-vertical" data-view="komutrotasi" style="display: none;" onclick="showView('komutrotasi', this); closeMobileDrawer();">🌐 Komut Rotası</button>
+      <button class="menu-item-vertical" data-view="teacher" style="display: none;" onclick="showView('teacher', this); closeMobileDrawer();">🏫 Bilişimci Hocam</button>
+
+      <button class="menu-item-vertical" onclick="openSettings(); closeMobileDrawer();" style="margin-top:8px;">⚙️ Ayarlar &amp; Sistem</button>
+
+      <!-- Mobil Hızlı Aksiyon Butonları (Header Ortak Standartları) -->
+      <div class="drawer-actions-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 10px;">
+        <button class="tbtn" onclick="toggleSmartboardMode(); closeMobileDrawer();" title="Akıllı Tahta Modu" style="width:100%; height:38px; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:4px; font-size:0.72rem; background:var(--sf2); border:1px solid var(--bd); color:var(--tx);"><span style="font-size:1rem;">🖥️</span> Tahta</button>
+        <button class="tbtn" onclick="toggleFullscreen(); closeMobileDrawer();" title="Tam Ekran" style="width:100%; height:38px; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:4px; font-size:0.72rem; background:var(--sf2); border:1px solid var(--bd); color:var(--tx);"><span style="font-size:1rem;">⛶</span> Ekran</button>
+        <button class="tbtn" id="drawerThemeBtn" onclick="toggleTheme(); updateSettingsThemeNotifUI();" title="Tema Değiştir" style="width:100%; height:38px; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:4px; font-size:0.72rem; background:var(--sf2); border:1px solid var(--bd); color:var(--tx);"><span style="font-size:1rem;">☀️</span> Tema</button>
+        <button class="tbtn" onclick="toggleNotifications(); updateSettingsThemeNotifUI();" title="Bildirimler" style="width:100%; height:38px; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:4px; font-size:0.72rem; background:var(--sf2); border:1px solid var(--bd); color:var(--tx); position:relative;"><span style="font-size:1rem;">🔔</span> Bildirim</button>
+        <button class="tbtn" onclick="openSettings(); closeMobileDrawer();" title="Ayarlar" style="width:100%; height:38px; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:4px; font-size:0.72rem; background:var(--sf2); border:1px solid var(--bd); color:var(--tx);"><span style="font-size:1rem;">⚙️</span> Ayarlar</button>
+        <button class="tbtn" onclick="NexusAuth.logout('../login.html')" title="Çıkış Yap" style="width:100%; height:38px; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:4px; font-size:0.72rem; background:rgba(239, 68, 68, 0.1); border:1px solid rgba(239, 68, 68, 0.2); color:#ef4444;"><span style="font-size:1rem;">🚪</span> Çıkış</button>
+      </div>
+
+      <!-- Geliştirici İmzası -->
+      <a href="admin.html" class="developer-credit-card" style="margin-top: 14px; text-decoration: none; display: flex; cursor: pointer;">
+        <div class="credit-header">
+          <span>⚡ Designed &amp; Developed by</span>
+        </div>
+        <div class="credit-names">
+          <span class="gradient-text-animated">Zafer Ünal</span>
+          <span class="credit-divider">|</span>
+          <span class="gradient-text-animated">Komut Rotası</span>
+        </div>
+      </a>
     </div>
   </div>
 
@@ -89,10 +148,9 @@
             <button class="menu-item-vertical" onclick="showView('habits', this)">📊 Analiz</button>
             <button class="menu-item-vertical" onclick="showView('dua', this)">🤲 Dua & Münâcât</button>
             <button class="menu-item-vertical" onclick="showView('hadis', this)">📜 40 Hadis</button>
-            <button class="menu-item-vertical" onclick="showView('books', this)">📚 Kitaplık</button>
-            <button class="menu-item-vertical" onclick="showView('komutrotasi', this)">🌐 Komut Rotası</button>
-            <button class="menu-item-vertical" onclick="showView('teacher', this)">🏫 Bilişimci Hocam</button>
-            <button class="menu-item-vertical" onclick="showView('finance', this)">💰 Finans & Bütçe</button>
+            <button class="menu-item-vertical" data-view="books" style="display: none;" onclick="showView('books', this)">📚 Kitaplık</button>
+            <button class="menu-item-vertical" data-view="komutrotasi" style="display: none;" onclick="showView('komutrotasi', this)">🌐 Komut Rotası</button>
+            <button class="menu-item-vertical" data-view="teacher" style="display: none;" onclick="showView('teacher', this)">🏫 Bilişimci Hocam</button>
           </div>
         </div>
 
@@ -114,6 +172,18 @@
           </div>
           <button class="tbtn-add" onclick="openAdd()" style="width:100%; height:36px;">+ Görev Ekle</button>
         </div>
+
+        <!-- Geliştirici İmzası (MANDATORY RULE REQUIREMENT) -->
+        <a href="admin.html" class="developer-credit-card" style="text-decoration: none; display: flex; cursor: pointer;">
+          <div class="credit-header">
+            <span>⚡ Designed &amp; Developed by</span>
+          </div>
+          <div class="credit-names">
+            <span class="gradient-text-animated">Zafer Ünal</span>
+            <span class="credit-divider">|</span>
+            <span class="gradient-text-animated">Komut Rotası</span>
+          </div>
+        </a>
       </div>
     </div>
 
@@ -136,13 +206,8 @@
             <div class="tasks-action-dropdown-wrap" style="position:relative;">
               <button class="btn" onclick="toggleTaskActionsMenu(event)" title="Diğer İşlemler">⚡ İşlemler ▾</button>
               <div class="tasks-action-dropdown" id="tasksActionsMenu">
-                <button onclick="toggleTaskHabitsPanel()"><span class="act-ico">🔥</span> Günlük
-                  Alışkanlıklarım</button>
-                <button onclick="toggleTaskFocusPanel()"><span class="act-ico">⏱️</span> Odaklanma Sayacı &
-                  Süreler</button>
                 <button onclick="openBatchAddModal()"><span class="act-ico">📥</span> Toplu Görev Ekle</button>
-                <button id="btnToggleSelect" onclick="toggleSelectMode()"><span class="act-ico">☑️</span> Seçim
-                  Modu</button>
+                <button id="btnToggleSelect" onclick="toggleSelectMode()"><span class="act-ico">☑️</span> Seçim Modu</button>
                 <button onclick="clearDone()"><span class="act-ico">🧹</span> Tamamlananları Temizle</button>
                 <button onclick="openCatManager()"><span class="act-ico">⚙️</span> Kategorileri Yönet</button>
               </div>
@@ -161,56 +226,83 @@
           <div id="habitListTasks" class="habits-view-list"></div>
         </div>
 
-        <!-- GÖREV ODAKLANMA & POMODORO SAYACI (ÜST DÜZEY AKILLI MENÜ/PANEL) -->
-        <div class="tasks-focus-grid" id="tasksFocusPanel"
-          style="display: none; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; margin-top: 8px;">
-          <!-- Odaklanma Sayacı -->
-          <div class="rcard">
-            <div class="rcard-title">
-              <span>⏱ Odaklanma Sayacı (Pomodoro)</span>
-              <span id="timerCatLbl" style="color:var(--teal);font-size:.58rem"></span>
-            </div>
-            <div class="timer-wrap">
-              <div class="trw">
-                <svg width="108" height="108" viewBox="0 0 108 108">
-                  <circle cx="54" cy="54" r="44" fill="none" stroke="#2c3550" stroke-width="6" />
-                  <circle id="timerRing" cx="54" cy="54" r="44" fill="none" stroke="#3ecfb0" stroke-width="6"
-                    stroke-linecap="round" stroke-dasharray="276.5" stroke-dashoffset="0" transform="rotate(-90 54 54)"
-                    style="transition:stroke-dashoffset 1s linear" />
+        <!-- GÖREV ODAKLANMA & POMODORO SAYACI (PREMİUM GLASSMORPHIC DASHBOARD) -->
+        <div class="focus-dashboard-grid" id="tasksFocusPanel" style="display: none;">
+          <!-- 1. SOL KART: POMODORO TIME RING & SAYAÇ -->
+          <div class="focus-card">
+            <div>
+              <div class="focus-card-hdr">
+                <div class="focus-card-title">⏱️ Odaklanma &amp; Pomodoro Zamanlayıcısı</div>
+                <span id="timerCatLbl" style="color:var(--teal); font-weight:700; font-size:0.72rem;"></span>
+              </div>
+
+              <!-- MOD SEKMELERİ -->
+              <div class="focus-mode-tabs">
+                <button class="focus-mode-btn on" id="btnModeWork" onclick="setPomodoroMode('work', 25, this)">💻 Çalışma (25d)</button>
+                <button class="focus-mode-btn" id="btnModeShortBreak" onclick="setPomodoroMode('shortBreak', 5, this)">☕ Mola (5d)</button>
+                <button class="focus-mode-btn" id="btnModeLongBreak" onclick="setPomodoroMode('longBreak', 15, this)">🌴 Mola (15d)</button>
+                <button class="focus-mode-btn" id="btnCancelBreak" onclick="clearBreakMode()" style="display:none; color:var(--rose); font-weight:800; background:var(--sf2); border:1px solid var(--rose);">✕ İptal</button>
+              </div>
+
+              <!-- RING TIMER -->
+              <div class="focus-ring-center">
+                <svg viewBox="0 0 110 110">
+                  <defs>
+                    <linearGradient id="pomoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="var(--teal)" />
+                      <stop offset="100%" stop-color="var(--gold)" />
+                    </linearGradient>
+                  </defs>
+                  <circle cx="55" cy="55" r="45" fill="none" stroke="var(--bd)" stroke-width="7" />
+                  <circle id="timerRing" cx="55" cy="55" r="45" fill="none" stroke="url(#pomoGradient)" stroke-width="7"
+                    stroke-linecap="round" stroke-dasharray="282.74" stroke-dashoffset="0" transform="rotate(-90 55 55)"
+                    style="transition: stroke-dashoffset 1s linear;" />
                 </svg>
-                <div class="ti">
-                  <div class="tnum" id="tnum">25:00</div>
-                  <div class="tph" id="tph">Hazır</div>
+                <div style="position:absolute; top:0; left:0; width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+                  <div class="focus-digits" id="tnum">25:00</div>
+                  <div class="focus-status-lbl" id="tph">Çalışma Zamanı</div>
+                </div>
+              </div>
+
+              <!-- HIZLI SÜRE ÇİPLERİ -->
+              <div class="focus-presets">
+                <button class="focus-preset-chip" onclick="setPreset(15,this)">15dk</button>
+                <button class="focus-preset-chip on" onclick="setPreset(25,this)">25dk 📚</button>
+                <button class="focus-preset-chip" onclick="setPreset(30,this)">30dk</button>
+                <button class="focus-preset-chip" onclick="setPreset(45,this)">45dk</button>
+                <button class="focus-preset-chip" onclick="setPreset(60,this)">60dk</button>
+              </div>
+
+              <!-- KATEGORİ SEÇİMİ VE SEANSLAR -->
+              <select class="fsel" id="timerCat" style="width: 100%; margin-top: 8px;"></select>
+              
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; font-size:0.75rem; color:var(--tx2);">
+                <span>Bugünkü Tamamlanan Seanslar</span>
+                <div class="sdots" id="sdots">
+                  <div class="sdot"></div>
+                  <div class="sdot"></div>
+                  <div class="sdot"></div>
+                  <div class="sdot"></div>
                 </div>
               </div>
             </div>
-            <div class="tpres">
-              <button class="tpre" onclick="setPreset(25,this)">25dk</button>
-              <button class="tpre on" onclick="setPreset(30,this)">30dk 📚</button>
-              <button class="tpre" onclick="setPreset(45,this)">45dk</button>
-              <button class="tpre" onclick="setPreset(60,this)">60dk</button>
-              <button class="tpre" onclick="setPreset(5,this)">5dk 🍵</button>
-            </div>
-            <select class="tcat" id="timerCat" style="width: 100%; margin-top: 8px;"></select>
-            <div class="sessrow" style="margin-top: 8px;">
-              <span>Bugünkü seanslar</span>
-              <div class="sdots" id="sdots">
-                <div class="sdot"></div>
-                <div class="sdot"></div>
-                <div class="sdot"></div>
-                <div class="sdot"></div>
-              </div>
-            </div>
-            <div class="tbtns" style="margin-top: 8px;">
-              <button class="tbstart" id="tbstart" onclick="timerToggle()">▶ Başlat</button>
-              <button class="tbreset" onclick="timerReset()">↺ Sıfırla</button>
+
+            <!-- BUTONLAR -->
+            <div class="focus-act-btns">
+              <button class="focus-btn-start" id="tbstart" onclick="timerToggle()">▶️ Başlat</button>
+              <button class="focus-btn-reset" onclick="timerReset()">↺ Sıfırla</button>
             </div>
           </div>
 
-          <!-- Kategori Süreleri -->
-          <div class="rcard">
-            <div class="rcard-title">⏰ Kategori Süreleri (Bugün)</div>
-            <div id="catTimes" style="margin-top: 10px;"></div>
+          <!-- 2. SAĞ KART: KATEGORİ SÜRELERİ -->
+          <div class="focus-card">
+            <div>
+              <div class="focus-card-hdr">
+                <div class="focus-card-title">⏰ Günlük Kategori Süreleri</div>
+                <span style="font-size:0.70rem; color:var(--tx3);">Odaklanılan Süreler</span>
+              </div>
+              <div id="catTimes" style="display:flex; flex-direction:column; gap:6px;"></div>
+            </div>
           </div>
         </div>
 
@@ -244,20 +336,11 @@
               <option value="cat">📂 Kategori</option>
             </select>
           </div>
-          <!-- Alt Satır: Segmented Filter Chips -->
-          <div class="fbar-segmented">
-            <button class="fchip on" onclick="setFilter('all',this)" id="fchip-all">Tümü <span class="fchip-cnt"
-                id="cnt-all">0</span></button>
-            <button class="fchip" onclick="setFilter('pending',this)" id="fchip-pending">Bekliyor <span
-                class="fchip-cnt" id="cnt-pending">0</span></button>
-            <button class="fchip" onclick="setFilter('today',this)" id="fchip-today">Bugün <span class="fchip-cnt"
-                id="cnt-today">0</span></button>
-            <button class="fchip" onclick="setFilter('done',this)" id="fchip-done">Bitti <span class="fchip-cnt"
-                id="cnt-done">0</span></button>
-            <button class="fchip fchip-overdue" onclick="setFilter('overdue',this)" id="fchip-overdue"
-              style="display:none">⚠️ Günü Geçenler <span class="fchip-cnt" id="cnt-overdue">0</span></button>
-            <button class="fchip fchip-sel" onclick="setFilter('selected',this)" id="fchipSelected"
-              style="display:none">☑️ Seçilenler <span class="fchip-cnt" id="cnt-selected">0</span></button>
+          <!-- Alt Satır: Segmented Filter Chips (Tam 3 Ana Filtre) -->
+          <div class="fbar-segmented" id="taskMainFilterBar">
+            <button class="fchip on" onclick="setFilter('all',this)" id="fchip-all">Tümü <span class="fchip-cnt" id="cnt-all">0</span></button>
+            <button class="fchip" onclick="setFilter('pending',this)" id="fchip-pending">Bekliyor <span class="fchip-cnt" id="cnt-pending">0</span></button>
+            <button class="fchip" onclick="setFilter('done',this)" id="fchip-done">Bitti <span class="fchip-cnt" id="cnt-done">0</span></button>
           </div>
         </div>
 
@@ -272,28 +355,53 @@
             <div class="page-sub">Hicrî takvim, günlük ibadetler ve ayet/hadis/dua takibi</div>
           </div>
           <div class="page-acts">
-            <button class="btn" onclick="openAddForSelectedDay()">+ Bugün İçin Görev Ekle</button>
+            <button class="btn" onclick="openAddForSelectedDay()">+ Seçili Güne Görev Ekle</button>
           </div>
         </div>
 
-        <!-- Günlük içerik kartları -->
-        <div class="daily-grid">
-          <div class="daily-card">
-            <div class="daily-title">📖 GÜNÜN AYETİ</div>
+        <!-- Mobil: Canlı istatistik chip'leri (sadece < 768px'de görünür) -->
+        <div class="mobile-stats-strip" id="mobileStatsStrip">
+          <div id="mobileStatsMsg" class="mobile-stats-inner">Yükleniyor...</div>
+        </div>
 
-            <div class="daily-text" id="dailyAyatText">Rabbin, kendisinden başkasına kulluk etmemenizi ve anne babaya
-              iyilik etmenizi emretti.</div>
-            <div class="daily-src" id="dailyAyatSrc">İsrâ 17/23</div>
+        <!-- Günlük İçerik Slider Karesi (Yandan Geçişli & Otomatik) -->
+        <div class="daily-slider-card">
+          <div class="daily-slider-header">
+            <div class="daily-slider-tabs">
+              <button class="daily-tab-btn on" onclick="setDailySlide(0)">📖 Ayet</button>
+              <button class="daily-tab-btn" onclick="setDailySlide(1)">🎓 Hadis</button>
+              <button class="daily-tab-btn" onclick="setDailySlide(2)">🤲 Dua</button>
+            </div>
+            <div class="daily-slider-dots">
+              <span class="daily-dot on" onclick="setDailySlide(0)"></span>
+              <span class="daily-dot" onclick="setDailySlide(1)"></span>
+              <span class="daily-dot" onclick="setDailySlide(2)"></span>
+            </div>
           </div>
-          <div class="daily-card hadis">
-            <div class="daily-title">🎓 GÜNÜN HADİSİ</div>
-            <div class="daily-text" id="dailyHadisText">Merhamet etmeyene merhamet olunmaz.</div>
-            <div class="daily-src" id="dailyHadisSrc">Buhârî, Edeb, 18</div>
-          </div>
-          <div class="daily-card dua">
-            <div class="daily-title">🤲 GÜNÜN DUASI</div>
-            <div class="daily-text" id="dailyDuaText">Rabbim! Beni namaza devam edenlerden eyle.</div>
-            <div class="daily-src" id="dailyDuaSrc">İbrâhîm 14/40</div>
+
+          <div class="daily-slider-wrapper" id="dailySliderWrapper">
+            <div class="daily-slider-track" id="dailySliderTrack">
+              <!-- 1. GÜNÜN AYETİ -->
+              <div class="daily-slide">
+                <div class="daily-title">📖 GÜNÜN AYETİ</div>
+                <div class="daily-text" id="dailyAyatText">Rabbin, kendisinden başkasına kulluk etmemenizi ve anne babaya iyilik etmenizi emretti.</div>
+                <div class="daily-src" id="dailyAyatSrc">İsrâ 17/23</div>
+              </div>
+
+              <!-- 2. GÜNÜN HADİSİ -->
+              <div class="daily-slide hadis">
+                <div class="daily-title">🎓 GÜNÜN HADİSİ</div>
+                <div class="daily-text" id="dailyHadisText">Merhamet etmeyene merhamet olunmaz.</div>
+                <div class="daily-src" id="dailyHadisSrc">Buhârî, Edeb, 18</div>
+              </div>
+
+              <!-- 3. GÜNÜN DUASI -->
+              <div class="daily-slide dua">
+                <div class="daily-title">🤲 GÜNÜN DUASI</div>
+                <div class="daily-text" id="dailyDuaText">Rabbim! Beni namaza devam edenlerden eyle.</div>
+                <div class="daily-src" id="dailyDuaSrc">İbrâhîm 14/40</div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -301,7 +409,7 @@
         <div class="cal-main-full">
           <div class="month-head">
             <button class="month-nav" onclick="changeMonth(-1)">‹</button>
-            <div>
+            <div style="flex: 1; text-align: center; display: flex; flex-direction: column; align-items: center;">
               <div class="section-lbl">AYLIK TAKVİM</div>
               <div class="month-title" id="monthTitle">—</div>
             </div>
@@ -331,8 +439,8 @@
           style="display:none; background:var(--rosebg); color:var(--rose); border:1px solid var(--rose); border-radius:10px; padding:10px 13px; margin-bottom:8px; font-size:.78rem; text-align:center; font-weight:700">
         </div>
 
-        <!-- ── GÜNÜN 24 SAATLİK DETAYLI VAKİT ZAMAN ŞERİDİ (NAMAZ MENÜSÜ) ── -->
-        <div class="ncard"
+        <!-- ── MASAÜSTÜ (PC): GÜNÜN 24 SAATLİK DETAYLI VAKİT ZAMAN ŞERİDİ ── -->
+        <div class="ncard namaz-desktop-strip"
           style="margin-bottom: 10px; padding: 12px 16px; background: linear-gradient(135deg, #0d1b2e 0%, #060c15 100%); border: 2px solid #1e3a5f; border-radius: 16px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
             <div
@@ -351,11 +459,9 @@
               </div>
               <div id="timelineNeedle"
                 style="position: absolute; top: -12px; bottom: -12px; width: 7px; background: #10b981; border-radius: 4px; z-index: 100; box-shadow: 0 0 20px #10b981, 0 0 8px #ffffff; transition: left 1s linear; pointer-events: none;">
-                <!-- İLERİYE (SAĞA) BAKAN KALIN YEŞİL OK UCU -->
                 <div
                   style="position: absolute; top: 50%; left: 5px; transform: translateY(-50%); width: 0; height: 0; border-top: 12px solid transparent; border-bottom: 12px solid transparent; border-left: 16px solid #10b981; filter: drop-shadow(3px 0 6px rgba(16,185,129,0.9));">
                 </div>
-                <!-- ÜST YEŞİL OK BAŞLIĞI ROZETİ -->
                 <div
                   style="position: absolute; top: -16px; left: -11px; width: 29px; height: 29px; background: #10b981; border: 2.5px solid #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 900; color: #042f2e; box-shadow: 0 0 18px #10b981;">
                   ➔</div>
@@ -364,38 +470,61 @@
           </div>
         </div>
 
-        <!-- ── SATIR 1: VAKİT TİKLERİ (SOL) | ESMÂ, AYET & ZİKİR (ORTA) | KAZA BORÇLARI (SAĞ) ── -->
-        <div
-          style="display: flex; gap: 10px; margin-bottom: 8px; align-items: stretch; justify-content: space-between; width: 100%;">
-
-          <!-- 1. Vakit Tikleri Kartı (SOL) -->
-          <div class="ncard"
-            style="display: flex; flex-direction: column; justify-content: flex-start; margin: 0; padding: 6px 9px; border: 3px solid #1b355a; border-radius: 12px; flex: 0 0 185px; max-width: 185px; align-self: stretch !important; box-sizing: border-box; background: linear-gradient(135deg, #0d1b2e 0%, #060c15 100%); gap: 4px;">
-            <div class="daily-title"
-              style="color:var(--teal); font-size: 0.56rem; font-weight: 800; letter-spacing: 0.08em; display: flex; justify-content: space-between; align-items: center;">
-              <span>🕌 VAKİT TİKLERİ</span>
-              <span id="namazCnt" style="color:var(--teal); font-family: 'JetBrains Mono', monospace;">0/5</span>
-            </div>
-
-            <!-- İbadet İlerleme Barı -->
-            <div style="margin-bottom: 2px;">
-              <div style="height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden;">
-                <div id="ibadetBar"
-                  style="height: 100%; width: 0%; background: linear-gradient(90deg, var(--teal), var(--gold)); transition: width 0.3s ease;">
-                </div>
-              </div>
-              <div id="ibadetMsg"
-                style="font-size: 0.54rem; color: var(--tx3); margin-top: 2px; font-weight: 600; text-align: center;">
-              </div>
-            </div>
-
-            <div id="namazChecklist" style="display: flex; flex-direction: column; gap: 2px; flex: 1;"></div>
+        <!-- ── MOBİL SÜRÜM: VAKİT KADRANI ── -->
+        <div class="ncard gauge-card namaz-mobile-dial"
+          style="margin-bottom: 10px; padding: 12px 14px; background: linear-gradient(135deg, #092c2a 0%, #031413 100%); border: 2px solid #0d403d; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); width: 100%; box-sizing: border-box;">
+          <div id="dialHoverTitle"
+            style="color: var(--gold); font-size: 0.65rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; min-height: 14px; text-align: center; width: 100%;">
+            VAKİT KADRANI
           </div>
+          <div class="gauge-wrap"
+            style="width: 100%; max-width: 360px; height: 180px; margin: 0 auto; position: relative; overflow: hidden; display: flex; justify-content: center;">
+            <svg id="vakitDialSvg" width="360" height="180" viewBox="0 10 200 100" style="overflow: hidden;">
+              <!-- Outer circle border (arch) -->
+              <path d="M 18 110 A 82 82 0 0 1 182 110" fill="none" stroke="rgba(20,91,88,0.4)" stroke-width="1" />
 
-          <!-- 2. ORTA ALAN: BÜYÜTÜLMÜŞ GÜNÜN AYETİ -->
-          <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px;">
+              <!-- Outer Bezel for Hour Numbers (arch segment) -->
+              <path d="M 2 110 A 98 98 0 0 1 198 110 L 182 110 A 82 82 0 0 0 18 110 Z" fill="#9bc7c5" stroke="#145b58" stroke-width="0.8" />
 
-            <!-- Günün Ayeti (Üstte Başlık | Ortada Okunaklı Harekeli Arapça & Meal | Altta Sure/Ayet No) -->
+              <!-- Sector paths (annular sectors) -->
+              <g id="dialSectors"></g>
+
+              <!-- Separator lines -->
+              <g id="dialSeparators"></g>
+
+              <!-- Ticks and hour numbers -->
+              <g id="dialHours"></g>
+
+              <!-- Marker dots -->
+              <g id="dialMarkers"></g>
+
+              <!-- Central circle for countdown backdrop (arch) -->
+              <path d="M 48 110 A 52 52 0 0 1 152 110 Z" fill="#a4cfce" stroke="#145b58" stroke-width="1.2" />
+
+              <!-- Needle (Red pointer) -->
+              <line id="dialNeedle" x1="100" y1="110" x2="100" y2="24" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" />
+              <!-- Needle cap -->
+              <circle cx="100" cy="110" r="4.5" fill="#ef4444" />
+            </svg>
+
+            <!-- Info in the center: countdown timer with dark text -->
+            <div id="dialCenterText"
+              style="position: absolute; bottom: 8px; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; pointer-events: none; line-height: 1.15;">
+              <div id="dialCountdownLabel"
+                style="font-size: 0.60rem; font-weight: 900; color: #0c3d3a; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.95; margin-bottom: 2px;">
+                Vaktin Çıkmasına</div>
+              <div style="font-size: 1.45rem; font-weight: 900; color: #031413; font-family: 'JetBrains Mono', monospace; letter-spacing: -0.02em;" id="dialCountdown">
+                --:--<span style="font-size: 0.65em; font-weight: 900; vertical-align: super; margin-left: 1px;" id="dialCountdownSec">--</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── NAMAZ KARTLARI (VAKİT TİKLERİ, GÜNÜN AYETİ, KAZA BORÇLARI) ── -->
+        <div class="namaz-cards-wrapper">
+
+          <!-- 1. GÜNÜN AYETİ (MOBİLDE ÜSTTE TEK SATIR) -->
+          <div class="namaz-quote-col">
             <div class="ncard" id="vaktinQuoteCard"
               style="display: flex; flex-direction: column; justify-content: space-between; gap: 6px; margin: 0; padding: 12px 16px; border-left: 4px solid var(--gold); border-radius: 12px; background: linear-gradient(135deg, #131924 0%, #090c12 100%); border: 1.5px solid var(--bd); flex: 1; overflow: hidden;">
               <!-- 1. Üst Kısım: Başlık -->
@@ -407,7 +536,7 @@
               <div
                 style="display: flex; flex-direction: column; align-items: flex-end; text-align: right; gap: 4px; width: 100%; margin: 4px 0;">
                 <div id="vaktinQuoteArabic"
-                  style="font-family: 'Amiri', serif; font-size: clamp(1.4rem, 1.75vw, 1.85rem); color: var(--gold); display: none; text-align: right; line-height: 1.85; direction: rtl; letter-spacing: 0.02em; word-break: break-word; max-width: 100%; padding: 4px 0;">
+                  style="font-family: var(--font-arabic); font-size: clamp(1.4rem, 1.75vw, 1.85rem); color: var(--gold); display: none; text-align: right; line-height: 1.85; direction: rtl; letter-spacing: normal; word-break: break-word; max-width: 100%; padding: 4px 0;">
                 </div>
                 <div id="vaktinQuoteText"
                   style="font-size: 0.94rem; font-weight: 700; color: var(--tx); line-height: 1.45; text-align: right; word-break: break-word; max-width: 100%;">
@@ -419,18 +548,44 @@
                 style="font-size: 0.84rem; color: var(--gold); font-weight: 800; text-align: left; width: 100%; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 6px; margin-top: 2px;">
                 —</div>
             </div>
-
           </div>
 
-          <!-- 3. Kaza Namazı Borçlarım & Öngörü Kartı (SAĞ) -->
-          <div class="ncard qada-card" id="qadaCardCompact"
-            style="display: flex; flex-direction: column; justify-content: flex-start; margin: 0; padding: 6px 9px; border: 3px solid #3d1b1b; border-radius: 12px; flex: 0 0 185px; max-width: 185px; align-self: stretch !important; box-sizing: border-box; background: linear-gradient(135deg, #1a0c0c 0%, #090303 100%); gap: 4px;">
-            <div class="qada-head"
-              style="font-weight: 800; font-size: 0.56rem; color: var(--rose); letter-spacing: 0.08em; margin-bottom: 2px; text-transform: uppercase;">
-              ⏳ KAZA BORÇLARIM</div>
-            <div id="qadaBox" style="display: flex; flex-direction: column; gap: 2px; flex: 1;"></div>
-            <div id="qadaCalculator"
-              style="margin-top: 4px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.06);"></div>
+          <!-- 2. ALT SATIR: VAKİT TİKLERİ (SOL) & KAZA BORÇLARI (SAĞ) (MOBİLDE YAN YANA) -->
+          <div class="namaz-check-qada-row">
+            <!-- Vakit Tikleri Kartı -->
+            <div class="ncard namaz-check-card"
+              style="display: flex; flex-direction: column; justify-content: flex-start; margin: 0; padding: 6px 9px; border: 3px solid #1b355a; border-radius: 12px; flex: 1; align-self: stretch !important; box-sizing: border-box; background: linear-gradient(135deg, #0d1b2e 0%, #060c15 100%); gap: 4px;">
+              <div class="daily-title"
+                style="color:var(--teal); font-size: 0.56rem; font-weight: 800; letter-spacing: 0.08em; display: flex; justify-content: space-between; align-items: center;">
+                <span>🕌 VAKİT TİKLERİ</span>
+                <span id="namazCnt" style="color:var(--teal); font-family: 'JetBrains Mono', monospace;">0/5</span>
+              </div>
+
+              <!-- İbadet İlerleme Barı -->
+              <div style="margin-bottom: 2px;">
+                <div style="height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden;">
+                  <div id="ibadetBar"
+                    style="height: 100%; width: 0%; background: linear-gradient(90deg, var(--teal), var(--gold)); transition: width 0.3s ease;">
+                  </div>
+                </div>
+                <div id="ibadetMsg"
+                  style="font-size: 0.54rem; color: var(--tx3); margin-top: 2px; font-weight: 600; text-align: center;">
+                </div>
+              </div>
+
+              <div id="namazChecklist" style="display: flex; flex-direction: column; gap: 2px; flex: 1;"></div>
+            </div>
+
+            <!-- Kaza Namazı Borçlarım & Öngörü Kartı -->
+            <div class="ncard qada-card" id="qadaCardCompact"
+              style="display: flex; flex-direction: column; justify-content: flex-start; margin: 0; padding: 6px 9px; border: 3px solid #3d1b1b; border-radius: 12px; flex: 1; align-self: stretch !important; box-sizing: border-box; background: linear-gradient(135deg, #1a0c0c 0%, #090303 100%); gap: 4px;">
+              <div class="qada-head"
+                style="font-weight: 800; font-size: 0.56rem; color: var(--rose); letter-spacing: 0.08em; margin-bottom: 2px; text-transform: uppercase;">
+                ⏳ KAZA BORÇLARIM</div>
+              <div id="qadaBox" style="display: flex; flex-direction: column; gap: 2px; flex: 1;"></div>
+              <div id="qadaCalculator"
+                style="margin-top: 4px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.06);"></div>
+            </div>
           </div>
 
         </div>
@@ -471,47 +626,45 @@
             <div class="page-sub">Günlük tesbihatlar, Esmâ-ül Hüsna ve interaktif Zikirmatik</div>
           </div>
           <div class="page-acts">
-            <button class="btn btn-primary" onclick="openZikirmatik()">📿 Zikirmatik Sayacı Aç</button>
+            <button class="btn btn-primary" disabled style="opacity: 0.45; cursor: not-allowed; pointer-events: none;" title="Zikirmatik Sayacı Pasif">📿 Zikirmatik Sayacı (Pasif)</button>
           </div>
         </div>
 
-        <!-- ÜST GRİD: GÜNÜN ESMASI & GÜNÜN ZİKİR AYETİ -->
-        <div class="zikir-top-grid"
-          style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
-          <!-- 1. Günün Esması -->
-          <div class="ncard esma-highlight-card" id="esmaCard"
-            style="display: flex; flex-direction: column; justify-content: space-between; gap: 10px; margin: 0; padding: 16px 20px; border: 2px solid rgba(212, 175, 55, 0.4); border-radius: 14px; background: linear-gradient(135deg, rgba(22, 13, 35, 0.95) 0%, rgba(10, 6, 16, 0.95) 100%); position: relative; box-shadow: 0 4px 16px rgba(0,0,0,0.2);">
-            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-              <span class="daily-title"
-                style="color:var(--gold); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.08em; display: flex; align-items: center; gap: 6px;">
-                ✨ GÜNÜN ESMASI
-              </span>
+        <!-- GÜNÜN ESMASI & ZİKİR AYETİ SLİDER KARTI (DÖNÜŞÜMLÜ VE KAYAR GEÇİŞLİ) -->
+        <div class="daily-slider-card zikir-slider-card" style="margin-bottom: 14px;">
+          <div class="daily-slider-header">
+            <div class="daily-slider-tabs">
+              <button class="zikir-tab-btn daily-tab-btn on" onclick="setZikirSlide(0)">✨ Günün Esması</button>
+              <button class="zikir-tab-btn daily-tab-btn" onclick="setZikirSlide(1)">📖 Günün Zikir Ayeti</button>
             </div>
-            <div style="display: flex; flex-direction: column; gap: 4px; width: 100%;">
-              <div id="esmaArabic"
-                style="font-family:'Amiri',serif; font-size: clamp(1.8rem, 2.2vw, 2.4rem); color: var(--gold); line-height: 1.3; font-weight: 700; text-align: right; direction: rtl;">
-                —</div>
-              <div id="esmaTranslit"
-                style="font-size: 1.05rem; font-weight: 800; color: var(--teal); text-align: left;">—</div>
-              <div id="esmaMeaning"
-                style="font-size: 0.88rem; line-height: 1.4; font-weight: 500; color: var(--tx2); font-style: italic; text-align: left;">
-                —</div>
+            <div class="daily-slider-dots">
+              <span class="zikir-dot daily-dot on" onclick="setZikirSlide(0)"></span>
+              <span class="zikir-dot daily-dot" onclick="setZikirSlide(1)"></span>
             </div>
           </div>
 
-          <!-- 2. Günün Zikir Ayeti -->
-          <div class="ncard zikir-widget" id="zikirCard"
-            style="display: flex; flex-direction: column; justify-content: space-between; gap: 10px; margin: 0; padding: 16px 20px; border: 2px solid rgba(62, 207, 176, 0.4); border-radius: 14px; background: linear-gradient(135deg, rgba(9, 37, 44, 0.95) 0%, rgba(4, 18, 22, 0.95) 100%); position: relative; box-shadow: 0 4px 16px rgba(0,0,0,0.2);">
-            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-              <span class="daily-title"
-                style="color:var(--teal); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.08em; display: flex; align-items: center; gap: 6px;">
-                📖 GÜNÜN ZİKİR AYETİ
-              </span>
-              <span id="zikirCountLabel"
-                style="font-size:0.75rem; font-weight:800; color:var(--teal); background:rgba(62,207,176,0.15); padding:2px 8px; border-radius:10px; border:1px solid rgba(62,207,176,0.3); font-family:'JetBrains Mono',monospace;">Ayet</span>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 4px; width: 100%;">
-              <div id="zikirText" style="width:100%;">—</div>
+          <div class="daily-slider-wrapper" id="zikirSliderWrapper" style="overflow:hidden; width:100%; border-radius:12px;">
+            <div class="daily-slider-track" id="zikirSliderTrack" style="display:flex; transition:transform 0.4s ease-in-out; width:200%;">
+              
+              <!-- 1. GÜNÜN ESMASI -->
+              <div class="daily-slide zikir-slide" style="width:50%; flex-shrink:0; box-sizing:border-box; padding:12px 16px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; width:100%; margin-bottom:6px;">
+                  <span style="color:var(--gold); font-size:0.75rem; font-weight:800; letter-spacing:0.08em;">✨ GÜNÜN ESMASI</span>
+                </div>
+                <div id="esmaArabic" style="font-family:var(--font-arabic); font-size:clamp(1.7rem, 2.2vw, 2.5rem); color:var(--gold); line-height:1.3; font-weight:700; text-align:right; direction:rtl;">—</div>
+                <div id="esmaTranslit" style="font-size:1.05rem; font-weight:800; color:var(--teal); text-align:left; margin-top:4px;">—</div>
+                <div id="esmaMeaning" style="font-size:0.88rem; line-height:1.4; font-weight:500; color:var(--tx2); font-style:italic; text-align:left; margin-top:2px;">—</div>
+              </div>
+
+              <!-- 2. GÜNÜN ZİKİR AYETİ -->
+              <div class="daily-slide zikir-slide" style="width:50%; flex-shrink:0; box-sizing:border-box; padding:12px 16px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; width:100%; margin-bottom:6px;">
+                  <span style="color:var(--teal); font-size:0.75rem; font-weight:800; letter-spacing:0.08em;">📖 GÜNÜN ZİKİR AYETİ</span>
+                  <span id="zikirCountLabel" style="font-size:0.75rem; font-weight:800; color:var(--teal); background:rgba(62,207,176,0.15); padding:2px 8px; border-radius:10px; border:1px solid rgba(62,207,176,0.3); font-family:'JetBrains Mono',monospace;">Ayet</span>
+                </div>
+                <div id="zikirText" style="width:100%;">—</div>
+              </div>
+
             </div>
           </div>
         </div>
@@ -613,6 +766,26 @@
 
         <!-- 5. ALIŞKANLIK & KATEGORİ SERİ ZİNCİRLERİ (STREAKS) -->
         <div id="aperf" style="margin-bottom: 24px;"></div>
+
+        <!-- 6. KESİNTİSİZ SERİ BANNER & DİJİTAL BAŞARIM ROZETLERİ -->
+        <div class="dcard" style="background:linear-gradient(135deg, rgba(255, 193, 7, 0.15), rgba(255, 87, 34, 0.15)); border:1px solid var(--gold); padding:16px; display:flex; align-items:center; justify-content:space-between; border-radius:14px; margin-bottom:16px;">
+          <div style="display:flex; align-items:center; gap:14px;">
+            <div style="font-size:2.4rem; background:rgba(255,193,7,0.2); width:54px; height:54px; border-radius:14px; display:flex; align-items:center; justify-content:center;">🔥</div>
+            <div>
+              <div style="font-size:1.3rem; font-weight:800; color:var(--gold);" id="streakDaysVal">🔥 7 Günlük Seri</div>
+              <div style="font-size:0.75rem; color:var(--tx2);" id="streakSubMsg">Tebrikler! Düzenli takibinizi bozmadan devam ediyorsunuz.</div>
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:0.72rem; color:var(--tx3);">Sonraki Rozet Hedefi</div>
+            <div style="font-size:1.0rem; font-weight:800; color:var(--tx);" id="nextBadgeTarget">30 Gün Şampiyonu</div>
+          </div>
+        </div>
+
+        <div class="slbl" style="font-size:0.78rem; margin-bottom:10px;">🎖️ Dijital Başarım Rozetleri</div>
+        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap:12px; margin-bottom:24px;" id="badgesGrid">
+          <!-- JS dynamic badges -->
+        </div>
       </div><!-- /v-habits -->
 
       <!-- KURAN -->
@@ -772,8 +945,6 @@
           </div>
           <div class="fbar-segmented">
             <button class="fchip on" onclick="switchDuaTab('all', this)" id="duatab-all">🤲 Tüm Dualar</button>
-            <button class="fchip" onclick="switchDuaTab('daily', this)" id="duatab-daily">🌅 Sabah-Akşam Duaları</button>
-            <button class="fchip" onclick="switchDuaTab('prophet', this)" id="duatab-prophet">✨ Peygamber Duaları</button>
             <button class="fchip" onclick="switchDuaTab('custom', this)" id="duatab-custom">📝 Kişisel Dualarım</button>
           </div>
         </div>
@@ -795,13 +966,13 @@
           <div class="quran-top-row">
             <!-- GÜNÜN HADİS-İ ŞERİFİ KARTI -->
             <div class="qcard quran-verse-card">
-              <div class="qcard-hdr">
-                <div class="qcard-title">
+              <div class="qcard-hdr" style="flex-wrap:wrap; gap:6px; width:100%; box-sizing:border-box;">
+                <div class="qcard-title" style="flex:1 1 auto; min-width:0; word-break:break-word;">
                   ✨ Günün Hadis-i Şerifi <span class="quran-verse-ref" id="hadisFeaturedRef">Buhârî 1</span>
                 </div>
-                <div style="display:flex; gap:6px; align-items:center;">
-                  <button class="tbtn" onclick="nextDailyHadis()" title="Rastgele Hadis Getir">Rastgele Hadis</button>
-                  <button class="tbtn" onclick="copyFeaturedHadisText()" style="white-space:nowrap; flex-shrink:0;">📋 Kopyala</button>
+                <div style="display:flex; gap:4px; align-items:center; flex-wrap:nowrap; flex-shrink:0; margin-left:auto;">
+                  <button class="tbtn" onclick="nextDailyHadis()" title="Rastgele Hadis Getir" style="font-size:0.70rem; padding:3px 7px; white-space:nowrap;">🎲 Rastgele</button>
+                  <button class="tbtn" onclick="copyFeaturedHadisText()" style="white-space:nowrap; flex-shrink:0; font-size:0.70rem; padding:3px 7px;">📋 Kopyala</button>
                 </div>
               </div>
               <div class="quran-verse-ar" id="hadisFeaturedAr">إِنَّمَا الْأَعْمَالُ بِالنِّيَّاتِ</div>
@@ -851,9 +1022,9 @@
             </div>
           </div>
           <div class="fbar-segmented">
-            <button class="fchip on" onclick="switchHadisTab('all', this)" id="htab-all">📜 Tüm Hadisler (40)</button>
-            <button class="fchip" onclick="switchHadisTab('mem', this)" id="htab-mem">🧠 Ezberlenenler (<span id="hcnt-mem">0</span>)</button>
-            <button class="fchip" onclick="switchHadisTab('pend', this)" id="htab-pend">⏳ Ezberlenecekler (<span id="hcnt-pend">40</span>)</button>
+            <button class="fchip on" onclick="switchHadisTab('all', this)" id="htab-all">📜 Tümü (40)</button>
+            <button class="fchip" onclick="switchHadisTab('mem', this)" id="htab-mem">🧠 Ezberlenen (<span id="hcnt-mem">0</span>)</button>
+            <button class="fchip" onclick="switchHadisTab('pend', this)" id="htab-pend">⏳ Ezberlenecek (<span id="hcnt-pend">40</span>)</button>
           </div>
         </div>
 
@@ -865,23 +1036,23 @@
         <div class="page-hdr">
           <div>
             <div class="page-title">📚 Kitaplık & Okuma Takibi</div>
-            <div class="page-sub">Okumakta olduğunuz kitaplar, sayfa hedefleri, okuma notları ve alıntı defteriniz</div>
+            <div class="page-sub">Okumakta olduğunuz kitaplar, sayfa hedefleri ve alıntı defteriniz</div>
           </div>
-          <div class="page-acts" style="display:flex; gap:8px;">
+          <div class="page-acts" style="display:flex; gap:6px;">
             <button class="btn" onclick="openAddQuoteModal()">📝 Alıntı Ekle</button>
-            <button class="btn btn-primary" onclick="openAddBookModal()">+ Yeni Kitap Ekle</button>
+            <button class="btn btn-primary" onclick="openAddBookModal()">+ Yeni Kitap</button>
           </div>
         </div>
 
-        <div class="fbar-compact" style="margin-bottom: 14px;">
+        <div class="fbar-compact" style="margin-bottom: 12px;">
           <div class="fbar-segmented">
-            <button class="fchip on" onclick="switchBookTab('reading', this)" id="btab-reading">📖 Okumakta Olduklarım</button>
-            <button class="fchip" onclick="switchBookTab('finished', this)" id="btab-finished">✅ Bitirilen Kitaplar</button>
-            <button class="fchip" onclick="switchBookTab('quotes', this)" id="btab-quotes">📝 Alıntı Defterim</button>
+            <button class="fchip on" onclick="switchBookTab('reading', this)" id="btab-reading">📖 Okunanlar</button>
+            <button class="fchip" onclick="switchBookTab('finished', this)" id="btab-finished">✅ Bitirilenler</button>
+            <button class="fchip" onclick="switchBookTab('quotes', this)" id="btab-quotes">📝 Alıntılar</button>
           </div>
         </div>
 
-        <div id="booksGridContainer" style="display:flex; flex-direction:column; gap:14px; width:100%;"></div>
+        <div id="booksGridContainer" style="display:flex; flex-direction:column; gap:12px; width:100%;"></div>
       </div><!-- /v-books -->
 
       <!-- KOMUT ROTASI -->
@@ -889,15 +1060,14 @@
         <div class="page-hdr">
           <div>
             <div class="page-title">🌐 Komut Rotası — Web & Kod Defteri</div>
-            <div class="page-sub">komutrotasi.com içerik fikirleri, geliştirme notları, kod snippet'ları ve hızlı araçlar</div>
+            <div class="page-sub">İçerik fikirleri, geliştirme notları, kod snippet'ları ve hızlı araçlar</div>
           </div>
-          <div class="page-acts">
-            <button class="btn" onclick="openAddWebToolModal()">🌐 Webmaster Aracı Ekle</button>
-            <button class="btn btn-primary" onclick="openAddSnippetModal()">+ Snippet / Blog Fikri Ekle</button>
+          <div class="page-acts" style="display:flex; gap:6px;">
+            <button class="btn btn-primary" onclick="openUnifiedKomutModal()" style="font-weight:700;">➕ Ekle (Hedef Seç)</button>
           </div>
         </div>
 
-        <div class="fbar-compact" style="margin-bottom: 14px;">
+        <div class="fbar-compact" style="margin-bottom: 12px;">
           <div class="fbar-top-row">
             <div class="sw">
               <span class="sw-i">🔍</span>
@@ -905,14 +1075,14 @@
             </div>
           </div>
           <div class="fbar-segmented">
-            <button class="fchip on" onclick="switchKomutTab('snippets', this)" id="ktab-snippets">💻 Kod Snippet'ları</button>
-            <button class="fchip" onclick="switchKomutTab('ideas', this)" id="ktab-ideas">💡 İçerik & Blog Fikirleri</button>
-            <button class="fchip" onclick="switchKomutTab('tools', this)" id="ktab-tools">🔗 Webmaster Araçları</button>
-            <button class="fchip" onclick="switchKomutTab('subdomains', this)" id="ktab-subdomains">🌐 Subdomain'ler</button>
+            <button class="fchip on" onclick="switchKomutTab('snippets', this)" id="ktab-snippets">💻 Kodlar</button>
+            <button class="fchip" onclick="switchKomutTab('ideas', this)" id="ktab-ideas">💡 Fikirler</button>
+            <button class="fchip" onclick="switchKomutTab('tools', this)" id="ktab-tools">🔗 Araçlar</button>
+            <button class="fchip" onclick="switchKomutTab('subdomains', this)" id="ktab-subdomains">🌐 Subdomain</button>
           </div>
         </div>
 
-        <div id="komutGridContainer" style="display:flex; flex-direction:column; gap:14px; width:100%;"></div>
+        <div id="komutGridContainer" style="display:flex; flex-direction:column; gap:12px; width:100%;"></div>
       </div><!-- /v-komutrotasi -->
 
       <!-- BİLİŞİMCİ HOCAM PANELİ -->
@@ -920,14 +1090,14 @@
         <div class="page-hdr">
           <div>
             <div class="page-title">🏫 Bilişimci Hocam — Ders & Müfredat Paneli</div>
-            <div class="page-sub">Bilgisayar Teknolojileri ve Yazılım ders planları, sınıf çetelesi, sınav ve lab hazırlık takibi</div>
+            <div class="page-sub">Bilişim Teknolojileri ders planları, sınıf çetelesi ve lab takibi</div>
           </div>
           <div class="page-acts">
-            <button class="btn btn-primary" onclick="openAddTeacherTaskModal()">+ Ders / Görev Ekle</button>
+            <button class="btn btn-primary" onclick="openUnifiedTeacherModal()" style="font-weight:700;">➕ Ekle (Hedef Seç)</button>
           </div>
         </div>
 
-        <div class="fbar-compact" style="margin-bottom: 14px;">
+        <div class="fbar-compact" style="margin-bottom: 12px;">
           <div class="fbar-top-row">
             <div class="sw">
               <span class="sw-i">🔍</span>
@@ -935,62 +1105,16 @@
             </div>
           </div>
           <div class="fbar-segmented">
-            <button class="fchip on" onclick="switchTeacherTab('classes', this)" id="ttab-classes">📚 Sınıflar & Müfredat</button>
-            <button class="fchip" onclick="switchTeacherTab('exams', this)" id="ttab-exams">📝 Sınav & Ödev Takibi</button>
-            <button class="fchip" onclick="switchTeacherTab('lab', this)" id="ttab-lab">🖥️ Bilişim Lab & Akıllı Tahta</button>
+            <button class="fchip on" onclick="switchTeacherTab('classes', this)" id="ttab-classes">📚 Sınıflar</button>
+            <button class="fchip" onclick="switchTeacherTab('exams', this)" id="ttab-exams">📝 Sınav & Ödev</button>
+            <button class="fchip" onclick="switchTeacherTab('lab', this)" id="ttab-lab">🖥️ Lab & Tahta</button>
           </div>
         </div>
 
-        <div id="teacherGridContainer" style="display:flex; flex-direction:column; gap:14px; width:100%;"></div>
+        <div id="teacherGridContainer" style="display:flex; flex-direction:column; gap:12px; width:100%;"></div>
       </div><!-- /v-teacher -->
 
-      <!-- KİŞİSEL FİNANS & BÜTÇE TAKİBİ -->
-      <div class="view" id="v-finance">
-        <div class="page-hdr">
-          <div>
-            <div class="page-title">💰 Kişisel Finans & Bütçe Takibi</div>
-            <div class="page-sub">Aylık maaş/ek ders gelirleri, hosting/domain giderleri, düzenli abonelikler ve birikim takibi</div>
-          </div>
-          <div class="page-acts">
-            <button class="btn" onclick="openManageFinanceCategoriesModal()">⚙️ Kategorileri Yönet</button>
-            <button class="btn btn-primary" onclick="openAddFinanceModal()">+ Gelir / Gider Ekle</button>
-          </div>
-        </div>
 
-        <!-- FİNANS ÖZET KARTLARI -->
-        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px; margin-bottom:14px; width:100%;">
-          <div style="background:var(--sf); border:1px solid var(--bd); padding:16px 18px; border-radius:14px;">
-            <div style="font-size:0.78rem; font-weight:800; color:var(--tx2); margin-bottom:4px;">📥 Toplam Aylık Gelir</div>
-            <div style="font-size:1.4rem; font-weight:900; color:var(--teal);" id="finTotalIncome">0,00 ₺</div>
-          </div>
-          <div style="background:var(--sf); border:1px solid var(--bd); padding:16px 18px; border-radius:14px;">
-            <div style="font-size:0.78rem; font-weight:800; color:var(--tx2); margin-bottom:4px;">📤 Toplam Aylık Gider</div>
-            <div style="font-size:1.4rem; font-weight:900; color:#ef4444;" id="finTotalExpense">0,00 ₺</div>
-          </div>
-          <div style="background:var(--sf); border:1px solid var(--bd); padding:16px 18px; border-radius:14px;">
-            <div style="font-size:0.78rem; font-weight:800; color:var(--tx2); margin-bottom:4px;">📈 Net Bütçe / Birikim</div>
-            <div style="font-size:1.4rem; font-weight:900; color:var(--gold);" id="finNetBalance">0,00 ₺</div>
-          </div>
-        </div>
-
-        <div class="fbar-compact" style="margin-bottom: 14px;">
-          <div class="fbar-top-row">
-            <div class="sw">
-              <span class="sw-i">🔍</span>
-              <input type="text" id="searchFinanceInp" placeholder="İşlem adı, kategori veya açıklama ara..." oninput="renderFinanceView()" />
-            </div>
-          </div>
-          <div class="fbar-segmented">
-            <button class="fchip on" onclick="switchFinanceTab('all', this)" id="ftab-all">📊 Tüm İşlemler</button>
-            <button class="fchip" onclick="switchFinanceTab('income', this)" id="ftab-income">📥 Gelirler</button>
-            <button class="fchip" onclick="switchFinanceTab('expense', this)" id="ftab-expense">📤 Giderler</button>
-            <button class="fchip" onclick="switchFinanceTab('installments', this)" id="ftab-installments">💳 Taksitler & Borçlar</button>
-            <button class="fchip" onclick="switchFinanceTab('sub', this)" id="ftab-sub">🔄 Abonelikler</button>
-          </div>
-        </div>
-
-        <div id="financeGridContainer" style="display:flex; flex-direction:column; gap:12px; width:100%;"></div>
-      </div><!-- /v-finance -->
 
     </div><!-- /center -->
 
@@ -1139,7 +1263,7 @@
         </div>
         <div class="fg s2">
           <label class="flbl">Arapça Metin (İsteğe Bağlı)</label>
-          <textarea class="finp" id="duaArInp" rows="2" style="font-family:'Amiri',serif; font-size:1.2rem; direction:rtl;" placeholder="Arapça metin..."></textarea>
+          <textarea class="finp" id="duaArInp" rows="2" style="font-family: var(--font-arabic); font-size:1.2rem; direction:rtl;" placeholder="Arapça metin..."></textarea>
         </div>
         <div class="fg s2">
           <label class="flbl">Türkçe Meâl & Açıklama</label>
@@ -1276,6 +1400,117 @@
     </div>
   </div>
 
+  <!-- ═══ SUBDOMAIN EKLE MODAL ═══ -->
+  <div class="mov" id="addSubdomainModal" onclick="if(event.target===this)closeModal('addSubdomainModal')">
+    <div class="modal">
+      <div class="modal-title">🌐 Subdomain Ekle / Düzenle</div>
+      <div class="fgrid">
+        <div class="fg s2">
+          <label class="flbl">Subdomain Adı / Başlık</label>
+          <input type="text" class="finp" id="subdomainTitleInp" placeholder="Örn: Mikat Portal, Kovan Projesi, Lab Dizin">
+        </div>
+        <div class="fg s2">
+          <label class="flbl">Subdomain URL Adresi</label>
+          <input type="url" class="finp" id="subdomainUrlInp" placeholder="https://mikat.komutrotasi.com">
+        </div>
+        <div class="fg">
+          <label class="flbl">Simge / İkon</label>
+          <select class="fsel" id="subdomainIconInp">
+            <option value="🌐">🌐 Web / Genel</option>
+            <option value="⚡">⚡ Mikat / Hızlı</option>
+            <option value="🐝">🐝 Kovan / Proje</option>
+            <option value="🚀">🚀 Seyir / Gözlem</option>
+            <option value="🧪">🧪 Lab / Test</option>
+            <option value="👑">👑 Ana Üs / Portal</option>
+            <option value="📚">📚 Kütüphane / Belgeler</option>
+          </select>
+        </div>
+        <div class="fg s2">
+          <label class="flbl">Açıklama / Not (İsteğe Bağlı)</label>
+          <input type="text" class="finp" id="subdomainNoteInp" placeholder="Örn: Mikat Yönetim Paneli ve Alışkanlık Takibi">
+        </div>
+      </div>
+      <div class="macts" style="margin-top:16px;">
+        <button class="btn" onclick="closeModal('addSubdomainModal')">İptal</button>
+        <button class="btn btn-primary" onclick="saveSubdomainModal()">Kaydet</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TEKİL MERKEZİ KOMUT ROTASI EKLEME MODAL ═══ -->
+  <div class="mov" id="unifiedKomutModal" onclick="if(event.target===this)closeModal('unifiedKomutModal')">
+    <div class="modal">
+      <div class="modal-title">➕ Komut Rotası'na Öğe Ekle</div>
+      <div class="fgrid">
+        <div class="fg s2">
+          <label class="flbl" style="font-weight:800; color:var(--gold);">🎯 Nereye Eklenecek? (Hedef Seçin)</label>
+          <select class="fsel" id="uKomutTargetInp" onchange="onUnifiedKomutTargetChange()" style="font-weight:700; border-color:var(--gold);">
+            <option value="subdomains">🌐 Subdomain (mikat.komutrotasi.com, kovan.komutrotasi.com vb.)</option>
+            <option value="tools">🛠️ Webmaster Aracı (Search Console, Analytics, PageSpeed vb.)</option>
+            <option value="snippets">💻 Kod Snippet (HTML, JavaScript, Python, SQL...)</option>
+            <option value="ideas">💡 İçerik & Proje Fikri</option>
+          </select>
+        </div>
+
+        <!-- URL / Link Tabanlı Öğeler İçin Form (Subdomain & Tools) -->
+        <div id="uKomutLinkFields" class="fg s2" style="display:contents;">
+          <div class="fg s2">
+            <label class="flbl" id="uKomutTitleLbl">Başlık / Ad</label>
+            <input type="text" class="finp" id="uKomutTitleInp" placeholder="Örn: Mikat Portal veya Google Search Console">
+          </div>
+          <div class="fg s2">
+            <label class="flbl">Web Adresi (URL)</label>
+            <input type="url" class="finp" id="uKomutUrlInp" placeholder="https://mikat.komutrotasi.com">
+          </div>
+          <div class="fg">
+            <label class="flbl">Simge / İkon</label>
+            <select class="fsel" id="uKomutIconInp">
+              <option value="🌐">🌐 Web / Genel</option>
+              <option value="⚡">⚡ Mikat / Performans</option>
+              <option value="🐝">🐝 Kovan / Proje</option>
+              <option value="🚀">🚀 Seyir / Uzay</option>
+              <option value="🧪">🧪 Lab / Test</option>
+              <option value="🔍">🔍 Arama / SEO</option>
+              <option value="📊">📊 Analiz / Trafik</option>
+              <option value="⚙️">⚙️ Yönetim / Panel</option>
+            </select>
+          </div>
+          <div class="fg s2">
+            <label class="flbl">Açıklama / Not (İsteğe Bağlı)</label>
+            <input type="text" class="finp" id="uKomutNoteInp" placeholder="Açıklayıcı not ekleyin...">
+          </div>
+        </div>
+
+        <!-- Kod / İçerik Tabanlı Öğeler İçin Form (Snippets & Ideas) -->
+        <div id="uKomutCodeFields" class="fg s2" style="display:none;">
+          <div class="fg s2">
+            <label class="flbl">Başlık</label>
+            <input type="text" class="finp" id="uKomutCodeTitleInp" placeholder="Örn: CSS Glassmorphism efekti veya Yeni Makale Fikri">
+          </div>
+          <div class="fg">
+            <label class="flbl">Kategori / Dil</label>
+            <select class="fsel" id="uKomutCodeLangInp">
+              <option value="HTML">HTML / CSS</option>
+              <option value="JS">JavaScript</option>
+              <option value="Python">Python</option>
+              <option value="SQL">SQL</option>
+              <option value="Kodlama">Genel Bilişim / Kod</option>
+              <option value="İçerik">İçerik / Blog Fikri</option>
+            </select>
+          </div>
+          <div class="fg s2">
+            <label class="flbl">Kod / Not İçeriği</label>
+            <textarea class="finp" id="uKomutCodeTextInp" rows="4" style="font-family:'JetBrains Mono',monospace; font-size:0.85rem;" placeholder="Kod bloğu veya detaylı notlar..."></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="macts" style="margin-top:16px;">
+        <button class="btn" onclick="closeModal('unifiedKomutModal')">İptal</button>
+        <button class="btn btn-primary" onclick="saveUnifiedKomutModal()">Kaydet ve Ekle</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ═══ DERS / ÖĞRETMENLİK GÖREVİ EKLE MODAL ═══ -->
   <div class="mov" id="addTeacherTaskModal" onclick="if(event.target===this)closeModal('addTeacherTaskModal')">
     <div class="modal">
@@ -1310,6 +1545,52 @@
       <div class="macts" style="margin-top:16px;">
         <button class="btn" onclick="closeModal('addTeacherTaskModal')">İptal</button>
         <button class="btn btn-primary" onclick="saveTeacherTaskModal()">Kaydet</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TEKİL MERKEZİ BİLİŞİMCİ HOCAM EKLEME MODAL ═══ -->
+  <div class="mov" id="unifiedTeacherModal" onclick="if(event.target===this)closeModal('unifiedTeacherModal')">
+    <div class="modal">
+      <div class="modal-title">➕ Bilişimci Hocam'a Görev / İçerik Ekle</div>
+      <div class="fgrid">
+        <div class="fg s2">
+          <label class="flbl" style="font-weight:800; color:var(--gold);">🎯 Nereye Eklenecek? (Hedef Seçin)</label>
+          <select class="fsel" id="uTeacherTargetInp" onchange="onUnifiedTeacherTargetChange()" style="font-weight:700; border-color:var(--gold);">
+            <option value="classes">📚 Sınıflar & Müfredat (Ders Planı, Konu Takibi)</option>
+            <option value="exams">📝 Sınav & Ödev (Yazılı, Test, Proje Ödevi)</option>
+            <option value="lab">🖥️ Lab & Tahta (Bakım, Yazılım Güncelleme, Ekipman)</option>
+          </select>
+        </div>
+        <div class="fg s2">
+          <label class="flbl">Görev / Başlık</label>
+          <input type="text" class="finp" id="uTeacherTitleInp" placeholder="Örn: 5-A Scratch Değişkenler Konusu veya 1. Dönem 1. Yazılı Okuma">
+        </div>
+        <div class="fg">
+          <label class="flbl">Sınıf / Düzey</label>
+          <select class="fsel" id="uTeacherClassInp">
+            <option value="5. Sınıf">5. Sınıf Bilişim</option>
+            <option value="6. Sınıf">6. Sınıf Bilişim</option>
+            <option value="7. Sınıf">7. Sınıf Bilişim</option>
+            <option value="8. Sınıf">8. Sınıf Bilişim</option>
+            <option value="Kodlama Kulübü">Kodlama Kulübü</option>
+            <option value="Robotik Takımı">Robotik Takımı</option>
+            <option value="Laboratuvar">Bilişim Lab / Akıllı Tahta</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label class="flbl">Tür / Kategori</label>
+          <select class="fsel" id="uTeacherTypeInp">
+            <option value="Müfredat">Müfredat / Ders Planı</option>
+            <option value="Sınav">Sınav / Okuma</option>
+            <option value="Ödev">Ödev / Proje</option>
+            <option value="Lab">Lab / Akıllı Tahta Bakım</option>
+          </select>
+        </div>
+      </div>
+      <div class="macts" style="margin-top:16px;">
+        <button class="btn" onclick="closeModal('unifiedTeacherModal')">İptal</button>
+        <button class="btn btn-primary" onclick="saveUnifiedTeacherModal()">Kaydet ve Ekle</button>
       </div>
     </div>
   </div>
@@ -1392,120 +1673,177 @@
     </div>
   </div>
 
-  <!-- ═══ AYARLAR MODAL (3 SÜTUNLU TAM SIĞAN DÜZEN - SCROLLSUZ) ═══ -->
+  <!-- ═══ AYARLAR MODAL (TEMA, BİLDİRİM, YEDEKLEME VE SİSTEM SIFIRLAMA) ═══ -->
+  <!-- ═══ AYARLAR & SİSTEM MODAL ═══ -->
+  <!-- ═══ AYARLAR & SİSTEM MODAL ═══ -->
   <div class="mov" id="settingsModal" onclick="if(event.target===this)closeModal('settingsModal')">
-    <div class="modal"
-      style="width: 920px; max-width: 96vw; border-radius: 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.6); padding: 16px 20px;">
-      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+    <div class="modal settings-modal-card">
+      
+      <!-- HEADER -->
+      <div class="settings-modal-hdr">
         <div>
-          <div class="modal-title" style="margin:0;">⚙️ Ayarlar & Sistem</div>
-          <div class="modal-sub" style="margin:0;">Veri aktarımı, şifreli yedekleme ve sistem sıfırlama</div>
+          <div class="modal-title">⚙️ Ayarlar &amp; Sistem</div>
+          <div class="modal-sub">Görünüm, bildirimler ve seçmeli modül yönetimi</div>
         </div>
-        <button class="mcancel" onclick="closeModal('settingsModal')" style="padding: 4px 12px; height: 32px;">Kapat
-          ✕</button>
+        <button class="mcancel" onclick="closeModal('settingsModal')">Kapat ✕</button>
       </div>
 
-      <div style="display: grid; grid-template-columns: 1.1fr 1fr 1fr; gap: 12px;">
+      <!-- SEKME BAR -->
+      <div class="fbar-segmented" style="margin-bottom: 14px;">
+        <button class="fchip on" onclick="switchSettingsTab('general', this)" id="stab-general" style="flex:1;">🎨 Görünüm &amp; Bildirim</button>
+        <button class="fchip" onclick="switchSettingsTab('modules', this)" id="stab-modules" style="flex:1;">🧩 Modül Yönetimi</button>
+      </div>
 
-        <!-- 1. VERİ AKTARIMI -->
-        <div
-          style="background:var(--bg2); border:1px solid var(--bd); border-radius:12px; padding:12px; display:flex; flex-direction:column; justify-content:space-between;">
-          <div>
-            <div
-              style="font-size:.60rem; text-transform:uppercase; letter-spacing:.10em; color:var(--tx3); font-weight:800; margin-bottom:8px;">
-              🔐 Veri Aktarımı (AES-256)</div>
-            <div class="ctabs" style="margin-bottom:8px;">
-              <button class="ctab on" onclick="cTab('exp',this)">↑ Dışa Aktar</button>
-              <button class="ctab" onclick="cTab('imp',this)">↓ İçe Aktar</button>
-            </div>
-            <div id="cexp">
-              <div class="cfield" style="margin-bottom:6px;"><label style="font-size:0.65rem;">Şifre (min 6
-                  kar.)</label><input type="password" id="epw" placeholder="Şifre"
-                  style="padding:4px 8px; font-size:0.75rem;" /></div>
-              <div class="cfield" style="margin-bottom:6px;"><label style="font-size:0.65rem;">Şifre
-                  Onay</label><input type="password" id="epw2" placeholder="Tekrar"
-                  style="padding:4px 8px; font-size:0.75rem;" /></div>
-              <button class="cbtn" onclick="doExport()" style="padding:6px; font-size:0.75rem;">🔒 Şifrele &
-                Aktar</button>
-              <div class="cfield" id="expR" style="display:none; margin-top:4px;"><label
-                  style="font-size:0.60rem;">Şifreli Veri</label><textarea id="expOut" readonly
-                  style="height:45px; font-size:0.65rem;"></textarea></div>
-              <div style="display:flex; gap:4px; margin-top:4px;">
-                <button class="cbtn2" id="copybtn" style="display:none; flex:1; padding:4px; font-size:0.70rem;"
-                  onclick="copyExp()">📋 Kopyala</button>
-                <button class="cbtn2" id="dlbtn" style="display:none; flex:1; padding:4px; font-size:0.70rem;"
-                  onclick="dlExp()">💾 İndir</button>
-              </div>
-            </div>
-            <div id="cimp" style="display:none;">
-              <div class="cfield" style="margin-bottom:6px;"><label style="font-size:0.65rem;">Şifre</label><input
-                  type="password" id="ipw" placeholder="Şifre" style="padding:4px 8px; font-size:0.75rem;" /></div>
-              <div class="cfield" style="margin-bottom:6px;"><label style="font-size:0.65rem;">Şifreli
-                  Veri</label><textarea id="idata" placeholder="Şifreli metin..."
-                  style="height:55px; font-size:0.65rem;"></textarea></div>
-              <button class="cbtn" onclick="doImport()" style="padding:6px; font-size:0.75rem;">🔓 Çöz & İçe
-                Aktar</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- 2. YEDEKLEME & DÖKÜM -->
-        <div
-          style="background:var(--bg2); border:1px solid var(--bd); border-radius:12px; padding:12px; display:flex; flex-direction:column; justify-content:space-between;">
-          <div>
-            <div
-              style="font-size:.60rem; text-transform:uppercase; letter-spacing:.10em; color:var(--tx3); font-weight:800; margin-bottom:8px;">
-              📍 Konum & Otomatik Yedek</div>
-            <div style="font-size:.76rem; font-weight:800; color:var(--gold); margin-bottom:8px;">📍 Sabit Konum:
-              Konya</div>
-            <div class="cfield"
-              style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; padding:4px 8px; background:var(--sf2); border-radius:8px;">
-              <label style="margin:0; font-size:0.74rem; font-weight:700;">Otomatik Yedek</label>
-              <input type="checkbox" id="autoBackupToggle" onchange="toggleAutoBackup(this.checked)"
-                style="width:16px; height:16px; cursor:pointer;" />
-            </div>
-            <div id="backupStatus" class="reset-note" style="margin-bottom:10px; font-size:0.65rem;">Henüz yedekleme
-              yapılmadı.</div>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
-              <button class="cbtn2" onclick="doExportJson()" style="padding:6px; font-size:0.72rem;">JSON
-                İndir</button>
-              <button class="cbtn2" onclick="doExportCsv()" style="padding:6px; font-size:0.72rem;">CSV
-                İndir</button>
-              <button class="cbtn2" style="grid-column: span 2; padding:6px; font-size:0.72rem;"
-                onclick="restoreBackup()">↺ Yedekten Yükle</button>
-            </div>
-          </div>
-          <div class="reset-note" style="margin-top:8px; font-size:0.62rem;">Dosyalar yerel cihazınıza kaydedilir.
-          </div>
-        </div>
-
-        <!-- 3. SIFIRLAMA İŞLEMLERİ -->
-        <div
-          style="background:var(--rosebg); border:1px solid var(--rose); border-radius:12px; padding:12px; display:flex; flex-direction:column; justify-content:space-between;">
-          <div>
-            <div
-              style="font-size:.60rem; text-transform:uppercase; letter-spacing:.10em; color:var(--rose); font-weight:800; margin-bottom:8px;">
-              ⚠️ Sistem Sıfırlama</div>
-            <div style="display:flex; flex-direction:column; gap:8px;">
-              <div>
-                <button class="reset-main" onclick="dailyReset()"
-                  style="width:100%; padding:6px; font-size:0.75rem; margin:0;">↺ Günlük İşaretleri Temizle</button>
-                <div class="reset-note" style="margin-top:2px; font-size:0.62rem;">Namaz, zikir ve alışkanlık
-                  tikleri sıfırlanır.</div>
-              </div>
-              <div>
-                <button class="reset-small" onclick="trackingReset()"
-                  style="width:100%; padding:5px; font-size:0.72rem;">📊 Takip Verilerini Sıfırla</button>
-                <div class="reset-note" style="margin-top:2px; font-size:0.62rem;">Geçmiş istatistikler temizlenir.
+      <div class="settings-modal-body">
+        
+        <!-- SEKME 1: GÖRÜNÜM & BİLDİRİM -->
+        <div id="setTab-general" class="settings-tab-content">
+          <div class="set-group">
+            <div class="set-group-title">👤 Profil &amp; Görünüm</div>
+            
+            <!-- Kullanıcı Adı -->
+            <div class="set-row-col" style="padding-top:4px;">
+              <div class="set-row-left">
+                <div class="set-row-icon">🧑‍💻</div>
+                <div>
+                  <div class="set-row-title">Kullanıcı Adı</div>
+                  <div class="set-row-sub">Maskot Pars'ın sana hitap etmesi için adın</div>
                 </div>
               </div>
-              <div>
-                <button class="reset-small danger" onclick="factoryReset()"
-                  style="width:100%; padding:5px; font-size:0.72rem;">🧨 Fabrika Ayarlarına Dön</button>
-                <div class="reset-note" style="margin-top:2px; font-size:0.62rem;">Tüm veriler kalıcı olarak
-                  silinir.</div>
+              <div style="display:flex; gap:8px; width:100%; margin-top:4px;">
+                <input type="text" id="userNameInput" placeholder="Adınız..." style="flex:1; padding:8px 12px; font-size:0.82rem; border-radius:8px; border:1px solid var(--bd); background:var(--bg); color:var(--tx);" />
+                <button class="cbtn" onclick="saveUserNameFromSettings()" style="width:auto !important; padding:8px 16px; font-size:0.80rem; border-radius:8px; flex-shrink:0; margin:0 !important;">Kaydet</button>
               </div>
             </div>
+
+            <!-- Tema -->
+            <div class="set-row">
+              <div class="set-row-left">
+                <div class="set-row-icon">🎨</div>
+                <div>
+                  <div class="set-row-title">Uygulama Teması</div>
+                  <div class="set-row-sub" id="currentThemeLabel">Koyu Tema 🌙</div>
+                </div>
+              </div>
+              <button class="cbtn2" onclick="toggleTheme(); updateSettingsThemeNotifUI();" style="width:auto !important; margin:0 !important; padding:6px 14px; font-size:0.78rem; border-radius:8px; flex-shrink:0;">
+                ☀️/🌙 Değiştir
+              </button>
+            </div>
+
+            <!-- Bildirimler -->
+            <div class="set-row">
+              <div class="set-row-left">
+                <div class="set-row-icon">🔔</div>
+                <div>
+                  <div class="set-row-title">Sistem Bildirimleri</div>
+                  <div class="set-row-sub" id="currentNotifLabel">Namaz &amp; Hatırlatıcı bildirimleri</div>
+                </div>
+              </div>
+              <label class="set-switch">
+                <input type="checkbox" id="settingsNotifToggle" onchange="toggleNotifications(); updateSettingsThemeNotifUI();" />
+                <span class="set-slider"></span>
+              </label>
+            </div>
+
+            <!-- Maskot Hatırlatıcı Aralığı -->
+            <div class="set-row">
+              <div class="set-row-left">
+                <div class="set-row-icon">🐆</div>
+                <div>
+                  <div class="set-row-title">Maskot Hatırlatıcı</div>
+                  <div class="set-row-sub">Pars'ın eksik alışkanlık hatırlatma sıklığı</div>
+                </div>
+              </div>
+              <select id="settingsMascotInterval" onchange="saveMascotIntervalFromSettings()" class="fsel" style="width:auto; max-width:180px; padding:6px 10px; font-size:0.78rem; border-radius:8px; border:1px solid var(--bd); background:var(--bg); color:var(--tx);">
+                <option value="10">⏱ 10 Dakikada Bir (Önerilen)</option>
+                <option value="15">⏱ 15 Dakikada Bir</option>
+                <option value="30">⏱ 30 Dakikada Bir</option>
+                <option value="0">🚫 Hatırlatıcıyı Kapat</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Konum & Şehir -->
+          <div class="set-group">
+            <div class="set-group-title">🕌 Vakit &amp; Konum Şehri</div>
+            <div class="set-row-col">
+              <div class="set-row-left">
+                <div class="set-row-icon">📍</div>
+                <div>
+                  <div class="set-row-title">Namaz Vakti Şehri</div>
+                  <div class="set-row-sub" id="locationStatus">Vakitlerin hesaplanacağı şehir adı</div>
+                </div>
+              </div>
+              <div style="display:flex; gap:8px; width:100%; margin-top:4px;">
+                <input type="text" id="namazCityInput" placeholder="Şehir adı (örn: Konya, İstanbul)" style="flex:1; padding:8px 12px; font-size:0.82rem; border-radius:8px; border:1px solid var(--bd); background:var(--bg); color:var(--tx);" />
+                <button class="cbtn" onclick="saveNamazCityFromSettings()" style="width:auto !important; padding:8px 16px; font-size:0.80rem; border-radius:8px; flex-shrink:0; margin:0 !important;">Kaydet</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SEKME 2: SEÇMELİ MODÜL YÖNETİMİ -->
+        <div id="setTab-modules" class="settings-tab-content" style="display:none;">
+          <div class="set-group">
+            <div class="set-group-title">🧩 Özel Modüller &amp; Menü Düzenleme</div>
+            <div style="font-size:0.72rem; color:var(--tx2); margin-bottom:4px;">
+              İstediğiniz modülleri yan menüde gizleyebilir veya başlıklarını özelleştirebilirsiniz:
+            </div>
+
+            <!-- Modül 1 -->
+            <div class="set-row-col">
+              <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+                <div class="set-row-left">
+                  <div class="set-row-icon">🌐</div>
+                  <div>
+                    <div class="set-row-title">1. Modül (Kod &amp; Snippet)</div>
+                    <div class="set-row-sub">Varsayılan: Komut Rotası</div>
+                  </div>
+                </div>
+                <label class="set-switch">
+                  <input type="checkbox" id="menuToggleKomut" onchange="toggleCustomMenu('komutrotasi', this.checked)" />
+                  <span class="set-slider"></span>
+                </label>
+              </div>
+              <input type="text" id="menuNameKomut" placeholder="Özel Menü İsmi (örn: 🌐 Komut Rotası)" onchange="updateCustomMenuName('komutrotasi', this.value)" style="padding:8px 12px; font-size:0.80rem; border-radius:8px; border:1px solid var(--bd); background:var(--bg); color:var(--tx); width:100%; box-sizing:border-box;" />
+            </div>
+
+            <!-- Modül 2 -->
+            <div class="set-row-col">
+              <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+                <div class="set-row-left">
+                  <div class="set-row-icon">🏫</div>
+                  <div>
+                    <div class="set-row-title">2. Modül (Ders Planı &amp; Lab)</div>
+                    <div class="set-row-sub">Varsayılan: Bilişimci Hocam</div>
+                  </div>
+                </div>
+                <label class="set-switch">
+                  <input type="checkbox" id="menuToggleTeacher" onchange="toggleCustomMenu('teacher', this.checked)" />
+                  <span class="set-slider"></span>
+                </label>
+              </div>
+              <input type="text" id="menuNameTeacher" placeholder="Özel Menü İsmi (örn: 🏫 Bilişimci Hocam)" onchange="updateCustomMenuName('teacher', this.value)" style="padding:8px 12px; font-size:0.80rem; border-radius:8px; border:1px solid var(--bd); background:var(--bg); color:var(--tx); width:100%; box-sizing:border-box;" />
+            </div>
+
+            <!-- Modül 3 -->
+            <div class="set-row-col">
+              <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+                <div class="set-row-left">
+                  <div class="set-row-icon">📚</div>
+                  <div>
+                    <div class="set-row-title">3. Modül (Kitap &amp; Okuma Takibi)</div>
+                    <div class="set-row-sub">Varsayılan: Kitaplık</div>
+                  </div>
+                </div>
+                <label class="set-switch">
+                  <input type="checkbox" id="menuToggleBooks" onchange="toggleCustomMenu('books', this.checked)" />
+                  <span class="set-slider"></span>
+                </label>
+              </div>
+              <input type="text" id="menuNameBooks" placeholder="Özel Menü İsmi (örn: 📚 Kitaplık)" onchange="updateCustomMenuName('books', this.value)" style="padding:8px 12px; font-size:0.80rem; border-radius:8px; border:1px solid var(--bd); background:var(--bg); color:var(--tx); width:100%; box-sizing:border-box;" />
+            </div>
+
           </div>
         </div>
 
@@ -1703,32 +2041,257 @@ Alışverişe çık #aile" style="font-family:inherit; font-size:0.85rem; resize
     </div>
   </div>
 
-  <!-- ═══ SAĞ ALT YÜZEN HIZLI EKLEME BUTONU VE POPOVER (FAB QUICK ADD) ═══ -->
+  <!-- ═══ EKRANDA ÖZGÜR GEZEN CANLI MASKOT & HATIRLATICI ═══ -->
   <div class="fab-wrapper" id="fabWrapper">
-    <div class="fab-popover" id="fabPopover" style="display:none;">
-      <div class="fab-popover-hdr">
-        <span>⚡ Hızlı Görev Ekle</span>
-        <button class="fab-popover-close" onclick="toggleFabQuickAdd()">✕</button>
+    <div class="mascot-speech-bubble" id="mascotBubble" style="display:none;">
+      <div class="mascot-bubble-hdr">
+        <span class="mascot-bubble-title">🐆 Anadolu Parsı — Pars (Mikat Asistanı)</span>
+        <button class="mascot-bubble-close" onclick="closeMascotBubble()">✕</button>
       </div>
-      <div class="fab-popover-body">
-        <input type="text" id="qaInp" class="finp" placeholder="Görev adı (#kategori !yüksek @bugün)"
-          onkeydown="if(event.key==='Enter')quickAdd()" style="margin-bottom:8px; font-size:0.85rem;" />
-        <div class="fab-quick-tags" id="fabQuickTags">
-          <span onclick="appendFabTag('#dini')">#dini</span>
-          <span onclick="appendFabTag('#kuran')">#kuran</span>
-          <span onclick="appendFabTag('#okul')">#okul</span>
-          <span onclick="appendFabTag('!yüksek')">!yüksek</span>
+      <div class="mascot-bubble-body" id="mascotBubbleBody">
+        💬 Selam! Bugün eksik alışkanlıklarını ve görevlerini senin için takip ediyorum.
+      </div>
+
+      <!-- MASKOT ETKİLEŞİM & AKSİYON BUTONLARI -->
+      <div style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
+        <button class="cbtn2" onclick="triggerRandomMascotWalk()" style="flex:1; height:30px; font-size:0.72rem; padding:0 8px; margin:0 !important;" title="Ekranda Yürüt">🏃 Yürüt</button>
+        <button class="cbtn2" onclick="mascotHop(true)" style="flex:1; height:30px; font-size:0.72rem; padding:0 8px; margin:0 !important;" title="Takla Attır">🦘 Takla At</button>
+        <button class="cbtn2" onclick="checkHabitReminders(true)" style="flex:1; height:30px; font-size:0.72rem; padding:0 8px; margin:0 !important;" title="Alışkanlık Kontrolü">📣 Hatırlat</button>
+      </div>
+
+      <!-- HIZLI GÖREV EKLEME ALANI -->
+      <div class="mascot-quick-add" style="border-top:1px dashed var(--bd); padding-top:8px;">
+        <div style="font-size:0.72rem; font-weight:700; color:var(--tx2); margin-bottom:4px;">⚡ Hızlı Görev Ekle:</div>
+        <input type="text" id="qaInp" placeholder="Örn: 25 dk Kodlama Yap #yazılım @bugün" style="width:100%; height:32px; font-size:0.78rem; padding:0 10px; border-radius:8px; border:1px solid var(--bd); background:var(--bg); color:var(--tx1); margin-bottom:6px;" onkeydown="if(event.key==='Enter') quickAdd()" />
+        <div style="display:flex; gap:4px; flex-wrap:wrap; font-size:0.70rem;">
+          <span onclick="appendFabTag('#yazılım')">#yazılım</span>
+          <span onclick="appendFabTag('#okuma')">#okuma</span>
+          <span onclick="appendFabTag('#spor')">#spor</span>
           <span onclick="appendFabTag('@bugün')">@bugün</span>
         </div>
-        <div style="display:flex; justify-content:flex-end; margin-top:10px;">
-          <button class="msave" onclick="quickAdd()" style="width:100%; height:36px; font-weight:700;">+
-            Ekleyiver</button>
+        <div style="display:flex; gap:6px; margin-top:10px;">
+          <button class="msave" onclick="quickAdd()" style="width:100%; height:34px; font-weight:700; font-size:0.78rem;">+ Ekleyiver</button>
         </div>
       </div>
     </div>
 
-    <button class="fab-btn" id="fabBtn" onclick="toggleFabQuickAdd()" title="Hızlı Görev Ekle">
-      <span class="fab-icon">+</span>
+    <button class="mascot-btn" id="mascotBtn" onclick="onMascotClick()" title="Anadolu Parsı (Pars - Tıkla / Sev / Oyna)">
+      <div class="mascot-svg-container" id="mascotSvgContainer">
+        <svg viewBox="0 0 120 120" width="120" height="120" class="mascot-svg" id="mascotSvg">
+          <defs>
+            <!-- Alev Turuncusu Kaplan Kürk Degradeleri -->
+            <radialGradient id="tigerFurGrad" cx="35%" cy="30%" r="70%">
+              <stop offset="0%" stop-color="#ff9d1e" />
+              <stop offset="60%" stop-color="#e65100" />
+              <stop offset="100%" stop-color="#b71c1c" />
+            </radialGradient>
+            <radialGradient id="tigerHeadGrad" cx="40%" cy="30%" r="65%">
+              <stop offset="0%" stop-color="#ffa726" />
+              <stop offset="70%" stop-color="#f57c00" />
+              <stop offset="100%" stop-color="#d84315" />
+            </radialGradient>
+            <radialGradient id="tigerWhiteGrad" cx="50%" cy="40%" r="60%">
+              <stop offset="0%" stop-color="#ffffff" />
+              <stop offset="100%" stop-color="#fff3e0" />
+            </radialGradient>
+            <!-- Kehribar/Altın Parlak Kaplan Gözü -->
+            <radialGradient id="tigerEyeGrad" cx="35%" cy="35%" r="65%">
+              <stop offset="0%" stop-color="#ffea00" />
+              <stop offset="50%" stop-color="#ff9100" />
+              <stop offset="100%" stop-color="#d84315" />
+            </radialGradient>
+            <linearGradient id="tigerEarInner" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#ffccbc" />
+              <stop offset="100%" stop-color="#ff8a65" />
+            </linearGradient>
+            <linearGradient id="tigerScarfGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#d50000" />
+              <stop offset="100%" stop-color="#8e0000" />
+            </linearGradient>
+            <radialGradient id="tigerOrb" cx="35%" cy="35%" r="65%">
+              <stop offset="0%" stop-color="#ffffff" />
+              <stop offset="50%" stop-color="#ffcc00" />
+              <stop offset="85%" stop-color="#ff6600" />
+              <stop offset="100%" stop-color="#cc3300" />
+            </radialGradient>
+            <radialGradient id="tigerShadow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="rgba(30,10,0,0.42)" />
+              <stop offset="100%" stop-color="rgba(30,10,0,0)" />
+            </radialGradient>
+            <linearGradient id="tigerBellGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#ffe875" />
+              <stop offset="100%" stop-color="#ffab00" />
+            </linearGradient>
+          </defs>
+
+          <!-- Taban Gölgesi -->
+          <ellipse cx="60" cy="114" rx="44" ry="6" fill="url(#tigerShadow)" class="svg-shadow" />
+
+          <!-- Çizgili Gerçek Kaplan Kuyruğu -->
+          <g class="svg-tail">
+            <path d="M 84 76 C 116 65 128 32 108 18 C 94 8 80 38 78 60 Z" fill="url(#tigerFurGrad)" stroke="#8e2400" stroke-width="1.2" />
+            <!-- Siyah Kaplan Kuyruk Çizgileri / Halkaları -->
+            <path d="M 88 64 C 92 62 94 67 91 70" stroke="#110602" stroke-width="2.5" stroke-linecap="round" fill="none" />
+            <path d="M 97 50 C 102 48 104 53 100 56" stroke="#110602" stroke-width="2.5" stroke-linecap="round" fill="none" />
+            <path d="M 104 35 C 108 33 110 38 106 41" stroke="#110602" stroke-width="2.5" stroke-linecap="round" fill="none" />
+            <!-- Siyah Kaplan Kuyruk Ucu -->
+            <path d="M 108 18 C 104 12 96 10 94 14 C 98 22 105 24 108 18 Z" fill="#110602" />
+          </g>
+
+          <!-- Arka Çizgili Kaplan Patileri -->
+          <g class="svg-legs-back">
+            <ellipse cx="32" cy="98" rx="14" ry="10" fill="url(#tigerFurGrad)" stroke="#8e2400" stroke-width="1.2" />
+            <ellipse cx="88" cy="98" rx="14" ry="10" fill="url(#tigerFurGrad)" stroke="#8e2400" stroke-width="1.2" />
+            <ellipse cx="32" cy="101" rx="9" ry="5" fill="url(#tigerWhiteGrad)" />
+            <ellipse cx="88" cy="101" rx="9" ry="5" fill="url(#tigerWhiteGrad)" />
+            <!-- Siyah Kaplan Pati Çizgileri -->
+            <path d="M 22 96 L 27 97 M 98 96 L 93 97" stroke="#110602" stroke-width="2" stroke-linecap="round" />
+          </g>
+
+          <!-- Çizgili Gerçek Kaplan Gövdesi -->
+          <g class="svg-torso">
+            <ellipse cx="60" cy="78" rx="34" ry="28" fill="url(#tigerFurGrad)" stroke="#8e2400" stroke-width="1.2" />
+            
+            <!-- Kaplan Karın Beyazlığı -->
+            <ellipse cx="60" cy="84" rx="20" ry="16" fill="url(#tigerWhiteGrad)" opacity="0.9" />
+
+            <!-- İkonik Kaplan Çizgileri (Body Tiger Stripes) -->
+            <!-- Sol Gövde Çizgileri -->
+            <path d="M 28 72 Q 38 74 34 80" stroke="#110602" stroke-width="2.5" stroke-linecap="round" fill="none" />
+            <path d="M 32 64 Q 42 67 38 72" stroke="#110602" stroke-width="2.5" stroke-linecap="round" fill="none" />
+            <!-- Sağ Gövde Çizgileri -->
+            <path d="M 92 72 Q 82 74 86 80" stroke="#110602" stroke-width="2.5" stroke-linecap="round" fill="none" />
+            <path d="M 88 64 Q 78 67 82 72" stroke="#110602" stroke-width="2.5" stroke-linecap="round" fill="none" />
+            <!-- Sırt Çizgisi -->
+            <path d="M 60 62 L 60 67" stroke="#110602" stroke-width="2.2" stroke-linecap="round" />
+          </g>
+
+          <!-- Ön Kaplan Patileri -->
+          <g class="svg-legs-front">
+            <ellipse cx="44" cy="92" rx="10" ry="13" fill="url(#tigerFurGrad)" stroke="#8e2400" stroke-width="1.2" />
+            <ellipse cx="76" cy="92" rx="10" ry="13" fill="url(#tigerFurGrad)" stroke="#8e2400" stroke-width="1.2" />
+            <!-- Pati Ön Çizgileri -->
+            <path d="M 37 90 L 41 91 M 83 90 L 79 91" stroke="#110602" stroke-width="2" stroke-linecap="round" />
+            <!-- Beyaz Pati Tabanları & Çizgileri -->
+            <path d="M 41 98 L 41 103 M 47 98 L 47 103" stroke="#8e2400" stroke-width="1.2" stroke-linecap="round" />
+            <path d="M 73 98 L 73 103 M 79 98 L 79 103" stroke="#8e2400" stroke-width="1.2" stroke-linecap="round" />
+          </g>
+
+          <!-- Sihirli Kaplan Güç Küresi / Kar Topu -->
+          <g class="svg-snowball">
+            <circle cx="60" cy="91" r="14" fill="url(#tigerOrb)" />
+            <circle cx="55" cy="86" r="4.5" fill="#ffffff" opacity="0.9" />
+            <circle cx="65" cy="95" r="1.8" fill="#ffffff" opacity="0.9" />
+          </g>
+
+          <!-- Kırmızı Tasma & Altın Zil -->
+          <g class="svg-scarf">
+            <path d="M 28 58 Q 60 74 92 58 Q 60 66 28 58 Z" fill="url(#tigerScarfGrad)" />
+            <rect x="26" y="54" width="68" height="10" rx="5" fill="url(#tigerScarfGrad)" />
+            <!-- Çan / Zil -->
+            <circle cx="60" cy="65" r="5" fill="url(#tigerBellGrad)" />
+            <circle cx="60" cy="66" r="1.2" fill="#5d4037" />
+          </g>
+
+          <!-- Gerçek Kaplan Kafası & Çizgiler & Kulaklar -->
+          <g class="svg-head">
+            <!-- Sol Yuvarlak Kaplan Kulağı -->
+            <g class="svg-ear-left">
+              <path d="M 32 30 C 14 10 30 2 44 20 Z" fill="#110602" stroke="#8e2400" stroke-width="1.2" />
+              <path d="M 30 26 C 20 14 30 8 38 20 Z" fill="url(#tigerFurGrad)" />
+              <path d="M 32 24 C 24 16 30 12 36 20 Z" fill="url(#tigerEarInner)" />
+              <!-- Kulak Arkası İkonik Beyaz Kaplan Benek (White Spot on Back of Ear) -->
+              <circle cx="23" cy="16" r="2.8" fill="#ffffff" />
+            </g>
+            <!-- Sağ Yuvarlak Kaplan Kulağı -->
+            <g class="svg-ear-right">
+              <path d="M 88 30 C 106 10 90 2 76 20 Z" fill="#110602" stroke="#8e2400" stroke-width="1.2" />
+              <path d="M 90 26 C 100 14 90 8 82 20 Z" fill="url(#tigerFurGrad)" />
+              <path d="M 88 24 C 96 16 90 12 84 20 Z" fill="url(#tigerEarInner)" />
+              <!-- Kulak Arkası İkonik Beyaz Kaplan Benek -->
+              <circle cx="97" cy="16" r="2.8" fill="#ffffff" />
+            </g>
+
+            <!-- Kafa Şekli (Ana Turuncu Kafa) -->
+            <ellipse cx="60" cy="38" rx="34" ry="27" fill="url(#tigerHeadGrad)" stroke="#8e2400" stroke-width="1.2" />
+
+            <!-- Kaplan Yanak Tüyleri & Beyaz Yanaklar (White Tiger Cheek Ruff) -->
+            <path d="M 26 44 C 18 48 20 56 32 54 Z" fill="url(#tigerWhiteGrad)" />
+            <path d="M 94 44 C 102 48 100 56 88 54 Z" fill="url(#tigerWhiteGrad)" />
+
+            <!-- İKONİK KAPLAN ALIN ÇİZGİLERİ (Forehead Tiger Stripes - "王" Crown Pattern) -->
+            <!-- Orta Dik Çizgi -->
+            <path d="M 60 16 L 60 25" stroke="#110602" stroke-width="2.6" stroke-linecap="round" />
+            <!-- Üst Alın Çizgisi -->
+            <path d="M 52 19 Q 60 15 68 19" stroke="#110602" stroke-width="2.6" stroke-linecap="round" fill="none" />
+            <!-- Alt Alın V Çizgisi -->
+            <path d="M 48 24 Q 60 28 72 24" stroke="#110602" stroke-width="2.5" stroke-linecap="round" fill="none" />
+            <!-- Yan Alın Çizgileri -->
+            <path d="M 38 26 Q 44 30 40 34" stroke="#110602" stroke-width="2.4" stroke-linecap="round" fill="none" />
+            <path d="M 82 26 Q 76 30 80 34" stroke="#110602" stroke-width="2.4" stroke-linecap="round" fill="none" />
+
+            <!-- Kaplan Yanak Çizgileri -->
+            <path d="M 28 42 L 36 43" stroke="#110602" stroke-width="2.4" stroke-linecap="round" />
+            <path d="M 27 47 L 35 47" stroke="#110602" stroke-width="2.4" stroke-linecap="round" />
+            <path d="M 92 42 L 84 43" stroke="#110602" stroke-width="2.4" stroke-linecap="round" />
+            <path d="M 93 47 L 85 47" stroke="#110602" stroke-width="2.4" stroke-linecap="round" />
+
+            <!-- Beyaz Ağız/Burun Bölgesi & Çene (White Tiger Muzzle & Chin) -->
+            <ellipse cx="60" cy="46" rx="20" ry="13" fill="url(#tigerWhiteGrad)" stroke="#ffd0a0" stroke-width="1" />
+
+            <!-- Göz Üstü Beyaz Kaplan Kaş Lekeleri (White Eyebrow Markings) -->
+            <ellipse cx="44" cy="27" rx="4.5" ry="2.2" fill="#ffffff" opacity="0.85" />
+            <ellipse cx="76" cy="27" rx="4.5" ry="2.2" fill="#ffffff" opacity="0.85" />
+
+            <!-- Bıyıklar (Tiger Whiskers) -->
+            <g class="svg-whiskers" stroke="#110602" stroke-width="1.1" stroke-linecap="round" opacity="0.85">
+              <path d="M 40 45 L 20 43 M 41 47 L 22 48 M 42 49 L 24 54" />
+              <path d="M 80 45 L 100 43 M 79 47 L 98 48 M 78 49 L 96 54" />
+            </g>
+
+            <!-- Yanak Allıkları -->
+            <circle cx="34" cy="45" r="5" fill="#ffab91" opacity="0.5" />
+            <circle cx="86" cy="45" r="5" fill="#ffab91" opacity="0.5" />
+
+            <!-- Kehribar/Altın Parlak Kaplan Gözleri & Göz Kırpma -->
+            <g class="svg-eyes">
+              <!-- Sol Göz -->
+              <g class="svg-eye-left">
+                <ellipse cx="44" cy="34" rx="6.5" ry="7.5" fill="#110602" />
+                <ellipse cx="44" cy="34" rx="5.5" ry="6.5" fill="url(#tigerEyeGrad)" />
+                <!-- Dik Vahşi Kedi / Kaplan Göz Bebeği -->
+                <ellipse cx="44" cy="34" rx="2" ry="5.5" fill="#0d0400" />
+                <circle cx="42" cy="31" r="2" fill="#ffffff" />
+                <circle cx="46" cy="36" r="0.9" fill="#ffffff" opacity="0.9" />
+              </g>
+              <!-- Sağ Göz -->
+              <g class="svg-eye-right">
+                <ellipse cx="76" cy="34" rx="6.5" ry="7.5" fill="#110602" />
+                <ellipse cx="76" cy="34" rx="5.5" ry="6.5" fill="url(#tigerEyeGrad)" />
+                <!-- Dik Vahşi Kedi / Kaplan Göz Bebeği -->
+                <ellipse cx="76" cy="34" rx="2" ry="5.5" fill="#0d0400" />
+                <circle cx="74" cy="31" r="2" fill="#ffffff" />
+                <circle cx="78" cy="36" r="0.9" fill="#ffffff" opacity="0.9" />
+              </g>
+              <!-- Göz Kırpma Kapağı (Procedural Eyelids) -->
+              <path d="M 37 34 Q 44 26 51 34" class="svg-eyelid-left" stroke="#110602" stroke-width="3.2" stroke-linecap="round" fill="none" />
+              <path d="M 69 34 Q 76 26 83 34" class="svg-eyelid-right" stroke="#110602" stroke-width="3.2" stroke-linecap="round" fill="none" />
+            </g>
+
+            <!-- Kaplan Burnu (Tiger Nose) -->
+            <path d="M 54 39 Q 60 36 66 39 Q 60 47 54 39 Z" fill="#d84315" stroke="#110602" stroke-width="0.8" />
+            <ellipse cx="58.5" cy="38.5" rx="1.5" ry="0.8" fill="#ffffff" opacity="0.85" />
+
+            <!-- Ağız ve Neşeli Pembe Kaplan Dili -->
+            <g class="svg-mouth-group">
+              <path d="M 53 45 Q 60 49 67 45" stroke="#110602" stroke-width="2.2" stroke-linecap="round" fill="none" />
+              <!-- Sarkık Neşeli Dil -->
+              <path d="M 57 47 Q 60 57 63 47 Z" fill="#ff5252" class="svg-tongue" />
+            </g>
+          </g>
+        </svg>
+      </div>
+      <div class="mascot-badge" id="mascotBadge" style="display:none;">!</div>
     </button>
   </div>
 
@@ -1743,11 +2306,6 @@ Alışverişe çık #aile" style="font-family:inherit; font-size:0.85rem; resize
     <div class="ticker-content" id="dpbarsTicker"></div>
     <div class="ticker-mood" id="tickerMood">😐 0%</div>
   </div>
-
-
-
-  </div><!-- /center -->
-  </div><!-- /layout -->
 
   <!-- ═══ FİNANS İŞLEMİ EKLE / DÜZENLE MODAL ═══ -->
   <div class="mov" id="addFinanceModal" onclick="if(event.target===this)closeModal('addFinanceModal')">
@@ -1864,19 +2422,15 @@ Alışverişe çık #aile" style="font-family:inherit; font-size:0.85rem; resize
       <span class="mb-nav-ico">📖</span>
       <span class="mb-nav-lbl">Kuran</span>
     </button>
-    <button class="mb-nav-item" onclick="showView('teacher', this)">
+    <button class="mb-nav-item" data-view="teacher" onclick="showView('teacher', this)">
       <span class="mb-nav-ico">🏫</span>
       <span class="mb-nav-lbl">Ders</span>
     </button>
-    <button class="mb-nav-item" onclick="showView('komutrotasi', this)">
+    <button class="mb-nav-item" data-view="komutrotasi" style="display: none;" onclick="showView('komutrotasi', this)">
       <span class="mb-nav-ico">🌐</span>
       <span class="mb-nav-lbl">Komut</span>
     </button>
-    <button class="mb-nav-item" onclick="showView('finance', this)">
-      <span class="mb-nav-ico">💰</span>
-      <span class="mb-nav-lbl">Finans</span>
-    </button>
-    <button class="mb-nav-item" onclick="showView('books', this)">
+    <button class="mb-nav-item" data-view="books" style="display: none;" onclick="showView('books', this)">
       <span class="mb-nav-ico">📚</span>
       <span class="mb-nav-lbl">Kitaplık</span>
     </button>

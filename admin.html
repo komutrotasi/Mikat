@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; connect-src 'self' https://api.aladhan.com https://fonts.googleapis.com https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; img-src 'self' data:; frame-src 'none'; object-src 'none';">
+    <title>Mikat Yönetim Paneli</title>
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/admin.css?v=3">
+</head>
+<body>
+    <!-- GİRİŞ EKRANI -->
+    <div class="login-overlay" id="login-screen">
+        <div class="glow-orb orb-1"></div>
+        <div class="glow-orb orb-2"></div>
+        
+        <div class="login-box glass-panel">
+            <div class="login-logo-container" style="background: transparent; border: none; box-shadow: none; width: 80px; height: 80px; margin: 0 auto 20px;">
+                <img src="mikat-logo.png" alt="Mikat Logo" onerror="this.src='assets/mascot.png';" style="width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 4px 12px rgba(59, 130, 246, 0.4));">
+            </div>
+            <h2>Mikat Yönetim Paneli</h2>
+            <p>Sisteme erişmek için PIN kodunuzu girin.</p>
+            <div class="input-wrapper">
+                <i class="fa-solid fa-lock input-icon"></i>
+                <input type="password" id="pin-input" placeholder="••••••" autocomplete="current-password">
+            </div>
+            <button id="btn-login" class="btn-glow">
+                <span>Giriş Yap</span> <i class="fa-solid fa-arrow-right"></i>
+            </button>
+            <div id="login-error" class="error-msg"></div>
+        </div>
+    </div>
+
+    <!-- YÖNETİM PANELİ -->
+    <div class="admin-layout" id="admin-dashboard" style="display: none;">
+        <aside class="admin-sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-brand-group">
+                    <img src="mikat-logo.png" alt="Mikat Logo" class="sidebar-logo-img" onerror="this.src='assets/mascot.png';">
+                    <div class="sidebar-brand-text">
+                        <span class="brand-title" style="background: linear-gradient(90deg, #10b981, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Mikat</span>
+                        <span class="brand-subtitle">Zaman ve Odak Yönetimi</span>
+                    </div>
+                </div>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" data-target="tab-overview" onclick="switchAdminNav('tab-overview'); return false;"><i class="fa-solid fa-chart-pie"></i> 📊 Sistem Özeti</a>
+                <a href="#" class="nav-item" data-target="tab-genel" onclick="switchAdminNav('tab-genel'); return false;"><i class="fa-solid fa-sliders"></i> ⚙️ Genel Ayarlar</a>
+                <a href="#" class="nav-item" data-target="tab-gorevler" onclick="switchAdminNav('tab-gorevler'); return false;"><i class="fa-solid fa-list-check"></i> 📋 Görev Yönetimi</a>
+                <a href="#" class="nav-item" data-target="tab-aliskanlik" onclick="switchAdminNav('tab-aliskanlik'); return false;"><i class="fa-solid fa-fire"></i> 🔥 Alışkanlık Yönetimi</a>
+                <a href="#" class="nav-item" data-target="tab-moduller" onclick="switchAdminNav('tab-moduller'); return false;"><i class="fa-solid fa-cubes"></i> 🌐 Komut Rotası & Modüller</a>
+                <a href="#" class="nav-item" data-target="tab-veri" onclick="switchAdminNav('tab-veri'); return false;"><i class="fa-solid fa-database"></i> 💾 Veri & Şifreli Yedek</a>
+                <a href="#" class="nav-item" data-target="tab-kullanici" onclick="switchAdminNav('tab-kullanici'); return false;"><i class="fa-solid fa-user-shield"></i> 👥 Kullanıcı & Güvenlik</a>
+                <a href="index.html" class="nav-item" style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px; background: rgba(239, 68, 68, 0.15); color: #fca5a5; border-color: rgba(239, 68, 68, 0.3);">🏠 Ana Sayfaya Dön</a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="sidebar-signature">
+                    <div class="signature-top">⚡ Designed & Developed by</div>
+                    <div class="signature-bottom">Zafer Ünal | Komut Rotası</div>
+                </div>
+            </div>
+        </aside>
+        
+        <div id="admin-mobile-backdrop" class="admin-mobile-backdrop" onclick="toggleMobileMenu()"></div>
+        <main class="admin-content">
+            <header class="content-topbar">
+                <div class="topbar-left" style="display: flex; align-items: center; gap: 12px;">
+                    <button id="btn-admin-mobile-toggle" class="btn-mobile-toggle" onclick="toggleMobileMenu(); return false;" style="display: none; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); font-size: 1.3rem; color: #ffffff; cursor: pointer; padding: 8px 12px; border-radius: 8px;">
+                        <i class="fa-solid fa-bars" id="admin-mobile-icon"></i>
+                    </button>
+                    <div>
+                        <h1 id="active-tab-title" style="margin: 0; font-size: 1.3rem;">📊 Sistem Özeti</h1>
+                        <span class="badge-online">Mikat Pro — Sistem Aktif</span>
+                    </div>
+                </div>
+                <div class="topbar-right" style="display: flex; gap: 10px; align-items: center;">
+                    <button id="btn-save-settings" class="btn-save-glow" onclick="saveAdminSettings()">
+                        <i class="fa-solid fa-floppy-disk"></i> Ayarları Kaydet
+                    </button>
+                    <button id="btn-logout" class="btn-secondary" onclick="adminLogout()" style="background:#fef2f2; color:#ef4444; border:1px solid #fca5a5;">
+                        <i class="fa-solid fa-right-from-bracket"></i> Çıkış Yap
+                    </button>
+                </div>
+            </header>
+
+            <div class="content-scrollable">
+
+                <!-- TAB 1: SİSTEM ÖZETİ & KPI DASHBOARD -->
+                <section id="tab-overview" class="tab-pane active">
+                    <!-- Stat Grid -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                        <!-- Stat 1: Tasks -->
+                        <div class="glass-card stat-card" style="border-left: 4px solid #3b82f6;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <span style="font-size:0.85rem; color:var(--text-muted); font-weight:600;">📋 Toplam Görev</span>
+                                <span style="font-size:1.4rem; color:#3b82f6;">📋</span>
+                            </div>
+                            <div style="font-size:1.8rem; font-weight:800; margin:8px 0; color:var(--text-main);" id="kpi-total-tasks">0</div>
+                            <div style="font-size:0.75rem; color:var(--text-muted);" id="kpi-completed-tasks">%0 Tamamlandı (0/0)</div>
+                            <div style="width:100%; height:6px; background:#e2e8f0; border-radius:3px; margin-top:8px; overflow:hidden;">
+                                <div id="kpi-task-progress-bar" style="width:0%; height:100%; background:linear-gradient(90deg, #3b82f6, #10b981); transition:width 0.4s ease;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Stat 2: Habits -->
+                        <div class="glass-card stat-card" style="border-left: 4px solid #f59e0b;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <span style="font-size:0.85rem; color:var(--text-muted); font-weight:600;">🔥 Aktif Alışkanlıklar</span>
+                                <span style="font-size:1.4rem; color:#f59e0b;">🔥</span>
+                            </div>
+                            <div style="font-size:1.8rem; font-weight:800; margin:8px 0; color:var(--text-main);" id="kpi-total-habits">0</div>
+                            <div style="font-size:0.75rem; color:var(--text-muted);" id="kpi-habits-sub">Bugün tamamlanan alışkanlık takibi</div>
+                        </div>
+
+                        <!-- Stat 3: Komut Rotası -->
+                        <div class="glass-card stat-card" style="border-left: 4px solid #8b5cf6;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <span style="font-size:0.85rem; color:var(--text-muted); font-weight:600;">🌐 Komut Rotası Envanteri</span>
+                                <span style="font-size:1.4rem; color:#8b5cf6;">🌐</span>
+                            </div>
+                            <div style="font-size:1.8rem; font-weight:800; margin:8px 0; color:var(--text-main);" id="kpi-komut-total">0</div>
+                            <div style="font-size:0.75rem; color:var(--text-muted);" id="kpi-komut-sub">Subdomain, Araç & Snippet</div>
+                        </div>
+
+                        <!-- Stat 4: System Data -->
+                        <div class="glass-card stat-card" style="border-left: 4px solid #10b981;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <span style="font-size:0.85rem; color:var(--text-muted); font-weight:600;">💾 Veri Verimliliği</span>
+                                <span style="font-size:1.4rem; color:#10b981;">💾</span>
+                            </div>
+                            <div style="font-size:1.8rem; font-weight:800; margin:8px 0; color:var(--text-main);" id="kpi-storage-size">0 KB</div>
+                            <div style="font-size:0.75rem; color:var(--text-muted);" id="kpi-storage-sub">AES-256 Korumalı Yerel Depolama</div>
+                        </div>
+                    </div>
+
+                    <!-- Detail Grid -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div class="glass-card">
+                            <h3><i class="fa-solid fa-cubes"></i> Modül Durumları & Görünürlük</h3>
+                            <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:16px;">Mikat içerisindeki opsiyonel modüllerin canlı durum paneli.</p>
+                            <div style="display:flex; flex-direction:column; gap:12px;" id="overview-module-status-list">
+                                <!-- Dynamic Module Status Rows -->
+                            </div>
+                        </div>
+
+                        <div class="glass-card">
+                            <h3><i class="fa-solid fa-bolt"></i> Hızlı Sistem İşlemleri</h3>
+                            <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:16px;">Veritabanını test etme, yedekleme ve senkronizasyon araçları.</p>
+                            <div style="display:flex; flex-direction:column; gap:10px;">
+                                <button class="btn-secondary" onclick="seedSampleAdminData()" style="text-align:left; justify-content:flex-start;">
+                                    <i class="fa-solid fa-magic-wand-sparkles" style="color:#8b5cf6;"></i> Örnek Görev & Alışkanlık Yükle
+                                </button>
+                                <button class="btn-secondary" onclick="forceStorageSync()" style="text-align:left; justify-content:flex-start;">
+                                    <i class="fa-solid fa-rotate" style="color:#3b82f6;"></i> Tüm Sekmelerle Canlı Senkronize Et
+                                </button>
+                                <button class="btn-secondary" onclick="switchAdminNav('tab-veri')" style="text-align:left; justify-content:flex-start;">
+                                    <i class="fa-solid fa-shield-halved" style="color:#10b981;"></i> AES-256 Şifreli Veri Yedeği Al
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TAB 2: GENEL AYARLAR -->
+                <section id="tab-genel" class="tab-pane">
+                    <div class="glass-card" style="margin-bottom:20px;">
+                        <h3><i class="fa-solid fa-sliders"></i> Uygulama Yapılandırması</h3>
+                        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Mikat genel tema, konum ve hatırlatıcı parametrelerini yönetebilirsiniz.</p>
+                        
+                        <div class="form-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                            <div class="form-group">
+                                <label style="font-weight:700;">Varsayılan Tema</label>
+                                <select class="form-control" id="inp-theme">
+                                    <option value="light">☀️ Açık Tema (Varsayılan)</option>
+                                    <option value="dark">🌙 Koyu Tema</option>
+                                    <option value="system">💻 Sistem Teması</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label style="font-weight:700;">Konum (Namaz Vakitleri İçin)</label>
+                                <input type="text" id="inp-location" class="form-control" value="Konya, Türkiye" placeholder="Örn: Konya, Türkiye">
+                            </div>
+                            <div class="form-group">
+                                <label style="font-weight:700;">🐆 Anadolu Parsı (Maskot) Alışkanlık Hatırlatıcı</label>
+                                <select class="form-control" id="inp-mascot-interval">
+                                    <option value="10" selected>⏱ Her 10 Dakikada Bir (Önerilen)</option>
+                                    <option value="15">⏱ Her 15 Dakikada Bir</option>
+                                    <option value="30">⏱ Her 30 Dakikada Bir</option>
+                                    <option value="0">🚫 Hatırlatıcıyı Kapat</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label style="font-weight:700;">⏱️ Odaklanma (Pomodoro) Süresi</label>
+                                <select class="form-control" id="inp-focus-duration">
+                                    <option value="15">15 Dakika (Hızlı Odak)</option>
+                                    <option value="25">25 Dakika (Standart Pomodoro)</option>
+                                    <option value="30">30 Dakika (Derin Çalışma)</option>
+                                    <option value="45">45 Dakika (Uzun Oturum)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Modül Görünürlük Kartı -->
+                    <div class="glass-card">
+                        <h3><i class="fa-solid fa-eye"></i> Opsiyonel Modül Görünürlük Yönetimi</h3>
+                        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">Ana navigasyon menüsünde görünmesini istediğiniz modülleri seçin.</p>
+                        
+                        <div style="display:flex; flex-direction:column; gap:14px;">
+                            <label style="display:flex; align-items:center; justify-content:space-between; padding:12px; background:var(--bg-dark); border-radius:10px; cursor:pointer;">
+                                <div>
+                                    <strong style="display:block;">🌐 Komut Rotası Modülü</strong>
+                                    <span style="font-size:0.8rem; color:var(--text-muted);">Web araçları, subdomainler ve kod snippet rehberi</span>
+                                </div>
+                                <input type="checkbox" id="mod-toggle-komutrotasi" style="width:20px; height:20px;">
+                            </label>
+
+                            <label style="display:flex; align-items:center; justify-content:space-between; padding:12px; background:var(--bg-dark); border-radius:10px; cursor:pointer;">
+                                <div>
+                                    <strong style="display:block;">🏫 Bilişimci Hocam Modülü</strong>
+                                    <span style="font-size:0.8rem; color:var(--text-muted);">Bilişim Teknolojileri müfredatı, sınav ve lab takibi</span>
+                                </div>
+                                <input type="checkbox" id="mod-toggle-teacher" style="width:20px; height:20px;">
+                            </label>
+
+                            <label style="display:flex; align-items:center; justify-content:space-between; padding:12px; background:var(--bg-dark); border-radius:10px; cursor:pointer;">
+                                <div>
+                                    <strong style="display:block;">📚 Kitaplık Modülü</strong>
+                                    <span style="font-size:0.8rem; color:var(--text-muted);">Okunan kitaplar, sayfa sayaçları ve notlar</span>
+                                </div>
+                                <input type="checkbox" id="mod-toggle-books" style="width:20px; height:20px;">
+                            </label>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TAB 3: GÖREV YÖNETİMİ (TAM İŞLEVSEL CRUD) -->
+                <section id="tab-gorevler" class="tab-pane">
+                    <div class="glass-card">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+                            <div>
+                                <h3 style="margin:0;"><i class="fa-solid fa-list-check"></i> Görev Veritabanı Masası</h3>
+                                <p style="color: var(--text-muted); font-size: 0.85rem; margin:4px 0 0 0;">Tüm Mikat görevlerini listeleyin, filtreleyin, ekleyin veya güncelleyin.</p>
+                            </div>
+                            <button class="btn-save-glow" onclick="openAdminTaskModal()" style="font-size:0.85rem; padding:8px 16px;">
+                                <i class="fa-solid fa-plus"></i> + Yeni Görev Ekle
+                            </button>
+                        </div>
+
+                        <!-- Filtreleme Çubuğu -->
+                        <div style="display:grid; grid-template-columns: 2fr 1fr 1fr; gap:10px; margin-bottom:16px;">
+                            <input type="text" id="adminTaskSearchInp" class="form-control form-sm" placeholder="Görev adı veya içerik ara..." oninput="renderAdminTasksTable()">
+                            <select id="adminTaskCatFilter" class="form-control form-sm" onchange="renderAdminTasksTable()">
+                                <option value="all">Tüm Kategoriler</option>
+                            </select>
+                            <select id="adminTaskPriFilter" class="form-control form-sm" onchange="renderAdminTasksTable()">
+                                <option value="all">Tüm Öncelikler</option>
+                                <option value="yuksek">🔴 Yüksek Öncelik</option>
+                                <option value="orta">🟡 Orta Öncelik</option>
+                                <option value="dusuk">🟢 Düşük Öncelik</option>
+                            </select>
+                        </div>
+
+                        <!-- Görevler Tablosu -->
+                        <div style="overflow-x:auto;">
+                            <table class="admin-table" style="width:100%; border-collapse:collapse;">
+                                <thead>
+                                    <tr>
+                                        <th style="width:40px; text-align:center;">Durum</th>
+                                        <th>Görev Başlığı</th>
+                                        <th>Kategori</th>
+                                        <th>Öncelik</th>
+                                        <th>Son Tarih</th>
+                                        <th style="width:120px; text-align:right;">İşlemler</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminTasksTableBody">
+                                    <!-- Dynamic Task Rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TAB 4: ALIŞKANLIK YÖNETİMİ (TAM İŞLEVSEL CRUD) -->
+                <section id="tab-aliskanlik" class="tab-pane">
+                    <div class="glass-card">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+                            <div>
+                                <h3 style="margin:0;"><i class="fa-solid fa-fire"></i> Alışkanlık Veritabanı Masası</h3>
+                                <p style="color: var(--text-muted); font-size: 0.85rem; margin:4px 0 0 0;">Günlük alışkanlık hedeflerinizi yönetin.</p>
+                            </div>
+                            <button class="btn-save-glow" onclick="openAdminHabitModal()" style="font-size:0.85rem; padding:8px 16px; background:linear-gradient(135deg, #f59e0b, #d97706);">
+                                <i class="fa-solid fa-plus"></i> + Yeni Alışkanlık Ekle
+                            </button>
+                        </div>
+
+                        <!-- Alışkanlıklar Tablosu -->
+                        <div style="overflow-x:auto;">
+                            <table class="admin-table" style="width:100%; border-collapse:collapse;">
+                                <thead>
+                                    <tr>
+                                        <th style="width:50px; text-align:center;">Simge</th>
+                                        <th>Alışkanlık Adı</th>
+                                        <th>Günlük Hedef Tekrar</th>
+                                        <th>Bugün Tamamlanan</th>
+                                        <th style="width:140px; text-align:right;">İşlemler</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminHabitsTableBody">
+                                    <!-- Dynamic Habit Rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TAB 5: KOMUT ROTASI & MODÜLLER -->
+                <section id="tab-moduller" class="tab-pane">
+                    <div class="glass-card">
+                        <h3><i class="fa-solid fa-cubes"></i> Komut Rotası Veri Masası</h3>
+                        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom:16px;">Subdomainler, Webmaster Araçları ve Snippet'ların canlı özet tablosu.</p>
+                        
+                        <div style="display:flex; gap:10px; margin-bottom:16px;">
+                            <button class="btn-save-glow" id="btn-komut-sub-subdomain" onclick="switchAdminKomutSubTab('subdomains')" style="font-size:0.8rem; padding:6px 12px;">
+                                🌐 Subdomainler (<span id="cnt-subdomains">0</span>)
+                            </button>
+                            <button class="btn-secondary" id="btn-komut-sub-tools" onclick="switchAdminKomutSubTab('tools')" style="font-size:0.8rem; padding:6px 12px;">
+                                🛠️ Webmaster Araçları (<span id="cnt-webtools">0</span>)
+                            </button>
+                            <button class="btn-secondary" id="btn-komut-sub-snippets" onclick="switchAdminKomutSubTab('snippets')" style="font-size:0.8rem; padding:6px 12px;">
+                                💻 Kod Snippet'ları (<span id="cnt-snippets">0</span>)
+                            </button>
+                        </div>
+
+                        <div id="adminKomutSubContent" style="overflow-x:auto;">
+                            <!-- Dynamic Content -->
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TAB 6: VERİ YÖNETİMİ & ŞİFRELİ YEDEK -->
+                <section id="tab-veri" class="tab-pane">
+                    <div class="glass-card">
+                        <h3><i class="fa-solid fa-shield-halved" style="color: #10b981;"></i> Mikat Güvenli Veri Yönetim Merkezi</h3>
+                        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">
+                            Mikat verilerinizi askeri düzey AES-256-GCM + PBKDF2 şifrelemeyle güvenle dışa aktarabilir, yedek dosyanızdan geri yükleyebilir veya verileri sıfırlayabilirsiniz.
+                        </p>
+
+                        <!-- KART: AES-256 ŞİFRELİ VERİ AKTARIMI -->
+                        <div style="background: rgba(16, 185, 129, 0.06); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+                            <h4 style="margin-top: 0; margin-bottom: 12px; color: var(--text-main); font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
+                                <i class="fa-solid fa-lock" style="color: #10b981;"></i> 🔐 Güvenli Şifreli Veri Yönetimi (AES-256-GCM)
+                            </h4>
+                            
+                            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                                <button class="btn-save-glow" id="btn-tab-export" onclick="switchAdminDataTab('export')" style="background: linear-gradient(135deg, #10b981, #059669); font-size: 0.85rem; padding: 8px 16px;">
+                                    <i class="fa-solid fa-lock"></i> ↑ Şifreli Dışa Aktar
+                                </button>
+                                <button class="btn-secondary" id="btn-tab-import" onclick="switchAdminDataTab('import')" style="font-size: 0.85rem; padding: 8px 16px; font-weight: 700;">
+                                    <i class="fa-solid fa-key"></i> ↓ Şifreli İçe Aktar
+                                </button>
+                            </div>
+
+                            <!-- Dışa Aktar Paneli -->
+                            <div id="admin-cexp" style="display: block;">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                                    <div>
+                                        <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 5px;">Yedek Şifresi (min 6 karakter)</label>
+                                        <input type="password" id="admin-epw" class="form-control" placeholder="Şifrenizi belirleyin">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 5px;">Şifre Onayı</label>
+                                        <input type="password" id="admin-epw2" class="form-control" placeholder="Şifreyi tekrar yazın">
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
+                                    <button class="btn-save-glow" id="btn-admin-do-export" onclick="adminDoExport('htbak')" style="flex: 1; background: linear-gradient(135deg, #10b981, #059669); font-weight: 800; padding: 12px; font-size: 0.88rem; min-width: 140px;">
+                                        🔒 Şifreli .htbak İndir
+                                    </button>
+                                    <button class="btn-save-glow" id="btn-admin-do-export-json" onclick="adminDoExport('json')" style="flex: 1; background: linear-gradient(135deg, #059669, #047857); font-weight: 800; padding: 12px; font-size: 0.88rem; min-width: 140px;">
+                                        🔐 Şifreli .json İndir
+                                    </button>
+                                </div>
+
+                                <div id="admin-expR" style="display: none; margin-top: 10px;">
+                                    <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 5px;">AES-256 Şifrelenmiş Veri Metni:</label>
+                                    <textarea id="admin-expOut" readonly class="form-control" style="height: 70px; font-family: monospace; font-size: 0.75rem; margin-bottom: 10px;"></textarea>
+                                    <div style="display: flex; gap: 10px;">
+                                        <button class="btn-secondary" id="btn-admin-copy-exp" onclick="adminCopyExp()" style="flex: 1;"><i class="fa-solid fa-copy"></i> Metni Kopyala</button>
+                                        <button class="btn-save-glow" id="btn-admin-dl-exp" onclick="adminDlExp()" style="flex: 1; background: linear-gradient(135deg, #10b981, #059669);"><i class="fa-solid fa-download"></i> .htbak Tekrar İndir</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- İçe Aktar Paneli -->
+                            <div id="admin-cimp" style="display: none;">
+                                <div style="margin-bottom: 12px;">
+                                    <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 5px;">Yedek Şifreniz</label>
+                                    <input type="password" id="admin-ipw" class="form-control" placeholder="Yedek şifrenizi girin" style="margin-bottom: 10px;">
+                                </div>
+                                <div style="margin-bottom: 12px;">
+                                    <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 5px;">Şifreli (.htbak veya .json) Veri Metni veya Dosya Yükleyin</label>
+                                    <textarea id="admin-idata" class="form-control" placeholder="Şifreli veri metnini veya JSON içeriğini yapıştırın..." style="height: 75px; font-family: monospace; font-size: 0.75rem; margin-bottom: 10px;"></textarea>
+                                    <div style="display: flex; gap: 10px;">
+                                        <button class="btn-secondary" id="btn-admin-browse-htbak" onclick="document.getElementById('inp-admin-htbak-file').click()" style="flex: 1;"><i class="fa-solid fa-file-arrow-up"></i> Dosya Seç (.htbak / .json)</button>
+                                        <input type="file" id="inp-admin-htbak-file" accept=".htbak,.json,.txt" onchange="adminReadFile(this)" style="display: none;">
+                                        <button class="btn-save-glow" id="btn-admin-do-import" onclick="adminDoImport()" style="flex: 1; background: linear-gradient(135deg, #3b82f6, #2563eb);"><i class="fa-solid fa-unlock"></i> Şifreyi Çöz & Yükle</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Şifresiz Excel / CSV Çıktısı -->
+                            <div style="margin-top: 15px; padding-top:15px; border-top: 1px dashed rgba(0,0,0,0.1); display: flex; justify-content: flex-end;">
+                                <button class="btn-secondary" id="btn-admin-csv-export" onclick="adminCsvExport()" style="font-size: 0.82rem; padding: 8px 14px; font-weight: 700;">
+                                    <i class="fa-solid fa-file-csv"></i> 📊 Şifresiz Excel / CSV İndir
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- VERİ TEMİZLEME VE SIFIRLAMA -->
+                        <div style="background: rgba(239, 68, 68, 0.06); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 12px; padding: 20px;">
+                            <h4 style="margin-top: 0; margin-bottom: 12px; color: #ef4444; font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
+                                <i class="fa-solid fa-triangle-exclamation"></i> ⚠️ Sistem Verisi Sıfırlama İşlemleri
+                            </h4>
+                            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px;">
+                                Tüm verileri silerek Mikat veritabanını fabrika ayarlarına veya tamamen temiz duruma getirebilirsiniz.
+                            </p>
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                <button class="btn-secondary" id="btn-admin-clear-data" onclick="adminClearData()" style="background: #ef4444; color: white; border: none; font-size: 0.85rem; font-weight: 700; padding: 10px 18px; border-radius: 8px;">
+                                    <i class="fa-solid fa-trash-can"></i> Tüm Verileri Sil (Temiz Duruma Getir)
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TAB 7: KULLANICI & GÜVENLİK -->
+                <section id="tab-kullanici" class="tab-pane">
+                    <div class="glass-card" style="margin-bottom:20px;">
+                        <h3><i class="fa-solid fa-user-shield"></i> Güvenlik & PIN Ayarları</h3>
+                        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 16px;">Admin paneline giriş PIN kodunuzu güncelleyin.</p>
+                        
+                        <div style="max-width:400px;">
+                            <div class="form-group">
+                                <label style="font-weight:700;">Yeni Yönetici PIN Kodu</label>
+                                <input type="password" id="inp-new-pin" class="form-control" placeholder="Örn: 744158 veya yeni PIN">
+                            </div>
+                            <button class="btn-glow" onclick="updatePin()" style="width:100%; justify-content:center;">
+                                <i class="fa-solid fa-key"></i> PIN Kodunu Güncelle
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="glass-card">
+                        <h3><i class="fa-solid fa-circle-check" style="color:#10b981;"></i> Oturum & Sistem Durumu</h3>
+                        <div style="display:flex; flex-direction:column; gap:10px; font-size:0.9rem; color:var(--text-main); margin-top:10px;">
+                            <div>🔒 <strong>Oturum Tipi:</strong> Yönetici Yetkili Oturum</div>
+                            <div>🛡️ <strong>Şifreleme Motoru:</strong> WebCrypto API AES-256-GCM</div>
+                            <div>⚡ <strong>Statik Kodlama:</strong> UTF-8 Standardı</div>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- ═══ MODAL: GÖREV EKLE / DÜZENLE ═══ -->
+    <div class="modal-overlay" id="adminTaskModal" style="display:none;" onclick="if(event.target===this)closeAdminTaskModal()">
+        <div class="modal-box">
+            <h3 id="adminTaskModalTitle"><i class="fa-solid fa-list-check"></i> Yeni Görev Ekle</h3>
+            <div class="form-group">
+                <label style="font-weight:700;">Görev Başlığı</label>
+                <input type="text" id="adminTaskTitleInp" class="form-control" placeholder="Örn: Hafta Sonu Proje Kodlaması">
+            </div>
+            <div class="form-group">
+                <label style="font-weight:700;">Kategori</label>
+                <input type="text" id="adminTaskCatInp" class="form-control" placeholder="Örn: İş & Projeler, Kişisel Gelişim, İbadet & Maneviyat">
+            </div>
+            <div class="form-row">
+                <div class="half">
+                    <label style="font-weight:700;">Öncelik</label>
+                    <select id="adminTaskPriInp" class="form-control">
+                        <option value="yuksek">🔴 Yüksek</option>
+                        <option value="orta" selected>🟡 Orta</option>
+                        <option value="dusuk">🟢 Düşük</option>
+                    </select>
+                </div>
+                <div class="half">
+                    <label style="font-weight:700;">Son Tarih</label>
+                    <input type="date" id="adminTaskDueInp" class="form-control">
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeAdminTaskModal()">İptal</button>
+                <button class="btn-save-glow" onclick="saveAdminTaskModal()">Kaydet</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ MODAL: ALIŞKANLIK EKLE / DÜZENLE ═══ -->
+    <div class="modal-overlay" id="adminHabitModal" style="display:none;" onclick="if(event.target===this)closeAdminHabitModal()">
+        <div class="modal-box">
+            <h3 id="adminHabitModalTitle"><i class="fa-solid fa-fire"></i> Yeni Alışkanlık Ekle</h3>
+            <div class="form-group">
+                <label style="font-weight:700;">Alışkanlık Adı</label>
+                <input type="text" id="adminHabitNameInp" class="form-control" placeholder="Örn: 10 Sayfa Kitap Okuma veya 5000 Adım">
+            </div>
+            <div class="form-row">
+                <div class="half">
+                    <label style="font-weight:700;">Simge / İkon (Emoji)</label>
+                    <input type="text" id="adminHabitIconInp" class="form-control" value="⚡" placeholder="Örn: 📖, 💧, 🏃">
+                </div>
+                <div class="half">
+                    <label style="font-weight:700;">Günlük Hedef Tekrar</label>
+                    <input type="number" id="adminHabitTargetInp" class="form-control" value="1" min="1">
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeAdminHabitModal()">İptal</button>
+                <button class="btn-save-glow" onclick="saveAdminHabitModal()">Kaydet</button>
+            </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/admin.js?v=3"></script>
+</body>
+</html>

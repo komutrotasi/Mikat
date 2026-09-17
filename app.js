@@ -1,6 +1,35 @@
 
 'use strict';
 
+// Safe NexusAuth Fallback
+if (typeof window.NexusAuth === 'undefined') {
+  
+// Safe Global Logout Fallback
+function logout(redirectUrl) {
+  if (window.NexusAuth && typeof window.NexusAuth.logout === 'function') {
+    window.NexusAuth.logout(redirectUrl);
+  } else {
+    try {
+      localStorage.removeItem('nexus_token');
+      localStorage.removeItem('nexus_user');
+    } catch (e) {}
+    window.location.href = redirectUrl || '../login.html';
+  }
+}
+window.logout = logout;
+
+window.NexusAuth = {
+    logout: function(redirectUrl) {
+      try {
+        localStorage.removeItem('nexus_token');
+        localStorage.removeItem('nexus_user');
+      } catch (e) {}
+      window.location.href = redirectUrl || '../login.html';
+    },
+    requireAuth: function() {}
+  };
+}
+
 /* ── RENK PALETİ ── */
 const COLOR_PALETTE = [
   { hex: '#e8b84b', bg: 'rgba(232,184,75,.12)' },
@@ -21,22 +50,15 @@ const COLOR_PALETTE = [
 const DEFAULT_CATS = {
   dini: { l: 'Dini Görevler', i: '🤲', c: '#e8b84b', bg: 'rgba(232,184,75,.12)' },
   kuran: { l: 'Kuran & Zikir', i: '📖', c: '#fb923c', bg: 'rgba(251,146,60,.12)' },
-  platform: { l: 'bilisimcihocam', i: '💻', c: '#3ecfb0', bg: 'rgba(62,207,176,.12)' },
+  is: { l: 'İş & Projeler', i: '💼', c: '#3ecfb0', bg: 'rgba(62,207,176,.12)' },
   okul: { l: 'Öğretmenlik', i: '🎓', c: '#5b9cf6', bg: 'rgba(91,156,246,.12)' },
   aile: { l: 'Aile', i: '❤️', c: '#a78bfa', bg: 'rgba(167,139,250,.12)' },
   kitap: { l: 'Kitap & Gelişim', i: '📚', c: '#f06878', bg: 'rgba(240,104,120,.12)' },
   diger: { l: 'Diğer', i: '📌', c: '#9aa0b8', bg: 'rgba(154,160,184,.12)' },
 };
 
-/* ── VARSAYILAN ALIŞKANLIKLAR ── */
-const DEFAULT_HABITS = [
-  { id: 's_zikir', l: '🌅 Sabah Zikirleri' },
-  { id: 'a_zikir', l: '🌆 Akşam Zikirleri' },
-  { id: 'kuran', l: '📖 Kuran Tilâveti' },
-  { id: 'kitap', l: '📚 Kitap Okuma' },
-  { id: 'yuruyus', l: '🚶 Yürüyüş' },
-  { id: 'su', l: '💧 Su (8 bardak)' },
-];
+/* ── VARSAYILAN ALIŞKANLIKLAR (BAŞLANGIÇTA BOŞ) ── */
+const DEFAULT_HABITS = [];
 
 /* ── ZİKİR LİSTESİ ── */
 let DAILY_ZIKIR = [
@@ -74,8 +96,16 @@ let DAILY_ZIKIR = [
 
 /* ── GÜNLÜK İÇERİK (data/*.json'dan yüklenir, yüklenene kadar fallback) ── */
 let DAILY_AYATS = [
-  { t: "Şüphesiz güçlükle beraber bir kolaylık vardır.", s: "İnşirâh 94/5" },
-  { t: "Allah, hiç kimseye gücünün üstünde bir yük yüklemez.", s: "Bakara 2/286" },
+  { t: "Rabbin, kendisinden başkasına kulluk etmemenizi ve anne babaya iyilik etmenizi emretti.", s: "İsrâ 17/23" },
+  { t: "Şüphesiz her güçlükle beraber bir kolaylık vardır. Gerçekten, her güçlükle beraber bir kolaylık vardır.", s: "İnşirâh 94/5-6" },
+  { t: "Allah, hiç kimseye gücünün üstünde bir yük yüklemez. Herkesin kazandığı iyilik kendi yararınadır.", s: "Bakara 2/286" },
+  { t: "Ey iman edenler! Sabır ve namazla yardım dileyin. Şüphesiz Allah sabredenlerle beraberdir.", s: "Bakara 2/153" },
+  { t: "Beni anın ki ben de sizi anayım. Bana şükredin, nankörlük etmeyin.", s: "Bakara 2/152" },
+  { t: "Biliniz ki kalpler ancak Allah'ı anmakla huzur bulur.", s: "Ra'd 13/28" },
+  { t: "Şüphesiz namaz, müminler üzerine belirli vakitlerde yazılmış bir farzdır.", s: "Nisâ 4/103" },
+  { t: "De ki: Eğer Allah'ı seviyorsanız bana uyun ki Allah da sizi sevsin ve günahlarınızı bağışlasın.", s: "Âl-i İmrân 3/31" },
+  { t: "İnsan için ancak çalıştığının karşılığı vardır ve çalıştığı ileride mutlaka görülecektir.", s: "Necm 53/39-40" },
+  { t: "Kullarıma söyle, en güzel sözü söylesinler. Çünkü şeytan aralarını bozmak ister.", s: "İsrâ 17/53" }
 ];
 
 /* ── ZİKİR İLE İLGİLİ KUTSAL AYETLER ── */
@@ -117,12 +147,27 @@ const ZIKIR_AYATS = [
   }
 ];
 let DAILY_HADITHS = [
-  { t: "Merhamet etmeyene merhamet olunmaz.", s: "Buhârî, Edeb, 18" },
-  { t: "Temizlik imanın yarısıdır.", s: "Müslim, Tahâret, 1" },
+  { t: "Merhamet etmeyene merhamet olunmaz. İnsanlara merhamet etmeyene Allah da merhamet etmez.", s: "Buhârî, Edeb, 18" },
+  { t: "Kolaylaştırınız, zorlaştırmayınız; müjdeleyiniz, nefret ettirmeyiniz.", s: "Buhârî, Cihâd, 164" },
+  { t: "Sizin en hayırlınız, ahlakı en güzel olanınızdır.", s: "Buhârî, Edeb, 38" },
+  { t: "Müslüman, elinden ve dilinden diğer Müslümanların emniyette olduğu kimsedir.", s: "Buhârî, Îmân, 4" },
+  { t: "İki nimet vardır ki insanların çoğu onların kıymetini bilmekte aldanmıştır: Sağlık ve boş vakit.", s: "Buhârî, Rikâk, 1" },
+  { t: "Hiçbiriniz kendi nefsi için istediğini mümin kardeşi için de istemedikçe gerçek manada iman etmiş olamaz.", s: "Buhârî, Îmân, 7" },
+  { t: "Güzel söz sadakadır. Camiye gitmek için atılan her adım sadakadır.", s: "Buhârî, Cihâd, 128" },
+  { t: "Komşusu açken tok yatan bizden değildir.", s: "Hâkim, el-Müstedrek, 2166" },
+  { t: "Ameller ancak niyetlere göredir. Herkes için ancak niyet ettiğinin karşılığı vardır.", s: "Buhârî, Bed'ü'l-Vahy, 1" },
+  { t: "Veren el, alan elden üstündür. Harcamaya kendi bakmakla yükümlü olduğun kimselerden başla.", s: "Buhârî, Zekât, 18" }
 ];
 let DAILY_DUAS = [
-  { t: "Rabbim! Göğsümü genişlet, işimi kolaylaştır.", s: "Tâhâ 20/25-26" },
-  { t: "Rabbimiz! Bize dünyada da iyilik ver, ahirette de iyilik ver.", s: "Bakara 2/201" },
+  { t: "Rabbimiz! Bize dünyada da iyilik ver, ahirette de iyilik ver ve bizi cehennem azabından koru.", s: "Bakara 2/201" },
+  { t: "Rabbim! Göğsümü genişlet, işimi kolaylaştır, dilimdeki bağı çöz ki sözümü anlasınlar.", s: "Tâhâ 20/25-28" },
+  { t: "Rabbim! Beni ve neslimi namazı devamlı kılanlardan eyle. Rabbimiz, duamı kabul buyur.", s: "İbrâhîm 14/40" },
+  { t: "Rabbimiz! Hesap görüleceği gün beni, anne babamı ve bütün müminleri bağışla.", s: "İbrâhîm 14/41" },
+  { t: "Rabbimiz! Üzerimize sabır yağdır, adımlarımızı sağlamlaştır ve kafirler topluluğuna karşı bize yardım et.", s: "Bakara 2/250" },
+  { t: "Allah'ım! Senden hidayet, takva, iffet ve gönül zenginliği istiyorum.", s: "Müslim, Zikir, 72" },
+  { t: "Rabbim! İlmimi artır ve beni salih kimselerin arasına kat.", s: "Şuarâ 26/83" },
+  { t: "Allah'ım! Faydasız ilimden, korkmayan kalpten, doymayan nefisten ve kabul olunmayan duadan Sana sığınırım.", s: "Müslim, Zikir, 73" },
+  { t: "Rabbimiz! Kalplerimizi doğru yola ilettikten sonra saptırma, bize katından bir rahmet bağışla.", s: "Âl-i İmrân 3/8" }
 ];
 let ESMA_LIST = [
   { ar: "الرَّحْمَنُ", tr: "Er-Rahmân", m: "Dünyada tüm yaratıklara sonsuz rahmet eden." },
@@ -245,11 +290,13 @@ let AUTH_USER = null;
 
 let S = {
   tasks: [], prayers: {}, habits: {}, zikirDone: {}, nafile: {}, qada: {},
-  catTime: {}, timerSess: {}, theme: 'dark',
+  catTime: {}, timerSess: {}, theme: 'light',
   cats: null, habitDefs: null, lastReset: '',
   notifEnabled: false, namazCity: 'Konya',
   autoBackup: false, lastBackup: '',
   lat: null, lng: null,
+  userName: '',
+  mascotReminderInterval: 10,
 };
 
 const NAMAZ_DAILY_AYATS = [
@@ -326,10 +373,22 @@ function dayOfYear() {
   return Math.floor((n - s) / 86400000);
 }
 function initDailyQuotes() {
-  const dayIdx = dayOfYear();
-  const ayat = DAILY_AYATS[dayIdx % DAILY_AYATS.length];
-  const hadis = DAILY_HADITHS[dayIdx % DAILY_HADITHS.length];
-  const dua = DAILY_DUAS[dayIdx % DAILY_DUAS.length];
+  const filteredAyats = (DAILY_AYATS || []).filter(a => a && a.t && a.t.trim().length >= 18);
+  const filteredHadiths = (DAILY_HADITHS || []).filter(h => h && h.t && h.t.trim().length >= 18);
+  const filteredDuas = (DAILY_DUAS || []).filter(d => d && d.t && d.t.trim().length >= 18);
+
+  const ayatList = filteredAyats.length ? filteredAyats : DAILY_AYATS;
+  const hadisList = filteredHadiths.length ? filteredHadiths : DAILY_HADITHS;
+  const duaList = filteredDuas.length ? filteredDuas : DAILY_DUAS;
+
+  // Her açılışta / sayfada rastgele ve farklı gelsin
+  const rAyat = Math.floor(Math.random() * ayatList.length);
+  const rHadis = Math.floor(Math.random() * hadisList.length);
+  const rDua = Math.floor(Math.random() * duaList.length);
+
+  const ayat = ayatList[rAyat];
+  const hadis = hadisList[rHadis];
+  const dua = duaList[rDua];
 
   const ayatText = document.getElementById('dailyAyatText');
   const ayatArabic = document.getElementById('dailyAyatArabic');
@@ -481,14 +540,19 @@ function sanitizeTask(t) {
 function sanitizeState(raw) {
   const def = {
     tasks: [], prayers: {}, habits: {}, zikirDone: {}, nafile: {}, qada: {},
-    catTime: {}, timerSess: {}, theme: 'dark',
+    catTime: {}, timerSess: {}, theme: 'light',
     cats: null, habitDefs: null, lastReset: '',
     notifEnabled: false, namazCity: 'Konya',
     autoBackup: false, lastBackup: '',
     lat: null, lng: null,
+    books: [], quotes: [], teacherTasks: [], snippets: [], webTools: [], subdomains: [],
+    customMenus: { komutrotasi: false, teacher: false, books: false },
+    customMenuNames: { komutrotasi: '🌐 Komut Rotası', teacher: '🏫 Bilişimci Hocam', books: '📚 Kitaplık' },
+    userName: '',
+    mascotReminderInterval: 10
   };
   const st = Object.assign(def, (raw && typeof raw === 'object') ? raw : {});
-  st.theme = st.theme === 'light' ? 'light' : 'dark';
+  st.theme = st.theme === 'dark' ? 'dark' : 'light';
   st.namazCity = safeText(st.namazCity || 'Konya', 40) || 'Konya';
   st.notifEnabled = !!(st.notifEnabled);
   st.autoBackup = !!(st.autoBackup);
@@ -496,11 +560,43 @@ function sanitizeState(raw) {
   st.lat = typeof st.lat === 'number' ? st.lat : null;
   st.lng = typeof st.lng === 'number' ? st.lng : null;
   st.lastReset = /^\d{4}-\d{2}-\d{2}$/.test(st.lastReset || '') ? st.lastReset : '';
+  st.mascotReminderInterval = (typeof st.mascotReminderInterval === 'number') ? st.mascotReminderInterval : 10;
+  if (!st.customMenus || typeof st.customMenus !== 'object') {
+    st.customMenus = { komutrotasi: false, teacher: false, books: false };
+  } else {
+    st.customMenus = {
+      komutrotasi: st.customMenus.komutrotasi === true,
+      teacher: st.customMenus.teacher === true,
+      books: st.customMenus.books === true,
+    };
+  }
+  if (!st.customMenuNames || typeof st.customMenuNames !== 'object') {
+    st.customMenuNames = { komutrotasi: '🌐 Komut Rotası', teacher: '🏫 Bilişimci Hocam', books: '📚 Kitaplık' };
+  } else {
+    let bName = safeText(st.customMenuNames.books || '📚 Kitaplık', 50);
+    const bLower = bName.toLowerCase();
+    if (!bName || !bLower.includes('kitap') || bLower.includes('bilisim') || bLower.includes('bilişim') || bLower.includes('hocam') || bLower.includes('test')) {
+      bName = '📚 Kitaplık';
+    }
+    let kName = safeText(st.customMenuNames.komutrotasi || '🌐 Komut Rotası', 50);
+    if (!kName || kName.toLowerCase().includes('test')) kName = '🌐 Komut Rotası';
+    let tName = safeText(st.customMenuNames.teacher || '🏫 Bilişimci Hocam', 50);
+    if (!tName || tName.toLowerCase().includes('test')) tName = '🏫 Bilişimci Hocam';
+
+    st.customMenuNames = {
+      komutrotasi: kName,
+      teacher: tName,
+      books: bName,
+    };
+  }
   st.cats = normalizeCats(st.cats || CATS); CATS = st.cats;
   st.habitDefs = normalizeHabits(st.habitDefs || HABITS); HABITS = st.habitDefs;
   st.tasks = Array.isArray(st.tasks) ? st.tasks.slice(0, 3000).map(sanitizeTask) : [];
   ['prayers', 'habits', 'zikirDone', 'catTime', 'timerSess', 'nafile', 'qada', 'esmaMemorized'].forEach(k => {
     if (!st[k] || typeof st[k] !== 'object' || Array.isArray(st[k])) st[k] = {};
+  });
+  ['books', 'quotes', 'teacherTasks', 'snippets', 'webTools', 'subdomains'].forEach(k => {
+    if (!Array.isArray(st[k])) st[k] = [];
   });
   ['sabah', 'ogle', 'ikindi', 'aksam', 'yatsi', 'vitir'].forEach(k => {
     st.qada[k] = Number.isInteger(st.qada[k]) && st.qada[k] >= 0 ? st.qada[k] : 0;
@@ -517,7 +613,11 @@ const safeStorage = {
   getItem(key) {
     try {
       const v = localStorage.getItem(key);
-      return v !== null ? v : (this._mem[key] || null);
+      if (v !== null) {
+        this._mem[key] = v;
+        return v;
+      }
+      return this._mem[key] || null;
     } catch (e) {
       return this._mem[key] || null;
     }
@@ -537,6 +637,15 @@ const safeStorage = {
   }
 };
 
+const OLD_SEED_NAMES = new Set([
+  'Sabah namazını kıl', 'Öğle namazını kıl', 'İkindi namazını kıl', 'Akşam namazını kıl', 'Yatsı namazını kıl',
+  'Cuma namazına git', 'Sabah sünnetini kıl', 'Kuran tilâveti (min 1 sayfa)', 'Sabah zikirleri', 'Akşam zikirleri',
+  'Ayetel Kürsi', 'İhlas-Felak-Nas (3 kez)', '100 İstiğfar', 'Günlük Kodlama Pratiği', 'Yeni Proje Fikri',
+  'Sosyal medya paylaşımı', 'YouTube ders videosu', 'Günlük plan hazırla', 'Kitap okuma (20 sayfa)',
+  'Öğrenci notları E-okul\'a işle', 'Eşinle baş başa konuşma', 'Çocuklarla oyun / sohbet', 'Çocukların ödevlerine bak',
+  'Anne-babayı ara', 'Kitap oku (min 20 dk)', 'Podcast / sesli kitap', 'Haftalık öğrendiklerini yaz'
+]);
+
 function load() {
   try {
     const raw = safeStorage.getItem('mikat');
@@ -546,6 +655,28 @@ function load() {
       const old = safeStorage.getItem('mikat-v5');
       if (old) Object.assign(S, sanitizeState(JSON.parse(old)));
     }
+    
+    // Eski tarayıcı önbelleğinde saklanan sahte görev ve eski sayaç/istatistik verilerini temizle
+    if (!localStorage.getItem('mikat_clean_v9')) {
+      if (Array.isArray(S.tasks)) {
+        S.tasks = S.tasks.filter(t => !t.name || !OLD_SEED_NAMES.has(t.name.trim()));
+      }
+      S.zikirCardCounts = {};
+      S.prayers = {};
+      S.habits = {};
+      S.books = [];
+      S.quotes = [];
+      S.teacherTasks = [];
+      S.snippets = [];
+      S.webTools = [];
+      S.subdomains = [];
+      S.catTime = {};
+      S.timerSess = {};
+      S.customMenus = { komutrotasi: false, teacher: false, books: false };
+      localStorage.setItem('mikat_clean_v9', '1');
+      safeStorage.setItem('mikat', JSON.stringify(S));
+    }
+
     CATS = normalizeCats(S.cats || CATS);
     HABITS = normalizeHabits(S.habitDefs || HABITS);
     S.cats = CATS; S.habitDefs = HABITS;
@@ -553,6 +684,29 @@ function load() {
     console.warn('Kayıt okunamadı:', e);
   }
 }
+
+function reloadFromStorage() {
+  try {
+    const raw = localStorage.getItem('mikat');
+    if (raw) {
+      safeStorage._mem['mikat'] = raw;
+      const fresh = sanitizeState(JSON.parse(raw));
+      for (const k in S) { delete S[k]; }
+      Object.assign(S, fresh);
+      CATS = normalizeCats(S.cats || CATS);
+      HABITS = normalizeHabits(S.habitDefs || HABITS);
+      if (typeof render === 'function') render();
+    }
+  } catch (e) {
+    console.warn('Yeniden yükleme hatası:', e);
+  }
+}
+window.mikatReloadFromStorage = reloadFromStorage;
+window.addEventListener('storage', (e) => {
+  if (e.key === 'mikat' || e.key === 'mikat_sync_trigger' || !e.key) {
+    reloadFromStorage();
+  }
+});
 function save() {
   try {
     S.cats = normalizeCats(CATS);
@@ -578,7 +732,11 @@ function debouncedSave() {
 /* ── TEMA ── */
 function applyTheme(t) {
   document.body.className = t;
-  document.getElementById('themeBtn').textContent = t === 'dark' ? '☀️' : '🌙';
+  document.documentElement.setAttribute('data-theme', t);
+  const themeBtn = document.getElementById('themeBtn');
+  if (themeBtn) themeBtn.textContent = t === 'dark' ? '☀️' : '🌙';
+  const drawerThemeBtn = document.getElementById('drawerThemeBtn');
+  if (drawerThemeBtn) drawerThemeBtn.innerHTML = t === 'dark' ? '<span style="font-size:1.05rem;">☀️</span> Tema' : '<span style="font-size:1.05rem;">🌙</span> Tema';
   const ring = document.getElementById('timerRing');
   if (ring) {
     ring.setAttribute('stroke', t === 'dark' ? '#3ecfb0' : '#0a7860');
@@ -644,23 +802,31 @@ async function decData(str, pw) {
   }
 }
 async function doExport() {
-  const pw = document.getElementById('epw').value.trim();
-  const pw2 = document.getElementById('epw2').value.trim();
+  const epwEl = document.getElementById('epw');
+  const epw2El = document.getElementById('epw2');
+  const pw = epwEl ? epwEl.value.trim() : '';
+  const pw2 = epw2El ? epw2El.value.trim() : '';
   if (!pw) { toast('Şifre girin', 'e'); return; }
   if (pw.length < 6) { toast('En az 6 karakter', 'e'); return; }
   if (pw !== pw2) { toast('Şifreler eşleşmiyor!', 'e'); return; }
   try {
     const enc = await encData(S, pw);
-    document.getElementById('expOut').value = enc;
-    document.getElementById('expR').style.display = 'block';
-    document.getElementById('copybtn').style.display = 'block';
-    document.getElementById('dlbtn').style.display = 'block';
+    const expOut = document.getElementById('expOut');
+    if (expOut) expOut.value = enc;
+    const expR = document.getElementById('expR');
+    if (expR) expR.style.display = 'block';
+    const copybtn = document.getElementById('copybtn');
+    if (copybtn) copybtn.style.display = 'block';
+    const dlbtn = document.getElementById('dlbtn');
+    if (dlbtn) dlbtn.style.display = 'block';
     toast('Veri şifrelendi! Güvenli bir yere kaydedin.', 's');
   } catch (e) { toast('Hata: ' + e.message, 'e'); }
 }
 async function doImport() {
-  const pw = document.getElementById('ipw').value.trim();
-  const raw = document.getElementById('idata').value.trim();
+  const ipwEl = document.getElementById('ipw');
+  const idataEl = document.getElementById('idata');
+  const pw = ipwEl ? ipwEl.value.trim() : '';
+  const raw = idataEl ? idataEl.value.trim() : '';
   if (!pw) { toast('Şifre girin', 'e'); return; }
   if (!raw) { toast('Veri yapıştırın', 'e'); return; }
   try {
@@ -669,8 +835,8 @@ async function doImport() {
     CATS = normalizeCats(S.cats); HABITS = normalizeHabits(S.habitDefs);
     save(); render(); renderSelects();
     toast('Veriler başarıyla yüklendi!', 's');
-    document.getElementById('idata').value = '';
-    document.getElementById('ipw').value = '';
+    if (idataEl) idataEl.value = '';
+    if (ipwEl) ipwEl.value = '';
   } catch (e) { toast('Şifre yanlış veya veri bozuk!', 'e'); }
 }
 function copyExp() {
@@ -724,7 +890,11 @@ function maybeAutoBackup() {
   // Not: mikat anahtarına tekrar yazmıyoruz — save() zaten yazdı
 }
 function doExportJson() {
-  const data = JSON.stringify(S, null, 2);
+  const exportData = JSON.parse(JSON.stringify(S));
+  delete exportData.lat;
+  delete exportData.lng;
+  exportData.namazCity = 'Konya';
+  const data = JSON.stringify(exportData, null, 2);
   const blob = new Blob([data], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -823,14 +993,14 @@ function toggleNotifications() {
   if (S.notifEnabled) {
     S.notifEnabled = false;
     notifTimers.forEach(clearTimeout); notifTimers = [];
-    document.getElementById('notifBtn').classList.remove('on');
+    document.getElementById('notifBtn')?.classList.remove('on');
     save(); toast('Bildirimler kapatıldı', 'i');
   } else {
     Notification.requestPermission().then(p => {
       if (p === 'granted') {
         S.notifEnabled = true;
         unlockAudio(); playSound('done');
-        document.getElementById('notifBtn').classList.add('on');
+        document.getElementById('notifBtn')?.classList.add('on');
         scheduleNotifs(); save(); toast('Bildirimler açıldı! 🔔', 's');
       } else { toast('Bildirim izni verilmedi', 'w'); }
     });
@@ -875,19 +1045,49 @@ function scheduleNotifs() {
     }
   });
 }
-function updateNotifBtn() { document.getElementById('notifBtn').classList.toggle('on', !!S.notifEnabled); }
+function updateNotifBtn() { document.getElementById('notifBtn')?.classList.toggle('on', !!S.notifEnabled); }
+
+/* ── Türkiye Şehir Koordinat Rehberi (Hassas Diyanet Vakitleri) ── */
+const TURKEY_CITY_COORDS = {
+  'konya': { lat: 37.8746, lng: 32.4932 },
+  'istanbul': { lat: 41.0082, lng: 28.9784 },
+  'ankara': { lat: 39.9334, lng: 32.8597 },
+  'izmir': { lat: 38.4237, lng: 27.1428 },
+  'bursa': { lat: 40.1885, lng: 29.0610 },
+  'antalya': { lat: 36.8969, lng: 30.7133 },
+  'adana': { lat: 37.0000, lng: 35.3213 },
+  'gaziantep': { lat: 37.0662, lng: 37.3833 },
+  'kayseri': { lat: 38.7312, lng: 35.4787 },
+  'trabzon': { lat: 41.0027, lng: 39.7168 },
+  'samsun': { lat: 41.2928, lng: 36.3313 },
+  'diyarbakir': { lat: 37.9144, lng: 40.2306 },
+  'erzurum': { lat: 39.9043, lng: 41.2679 },
+  'eskisehir': { lat: 39.7767, lng: 30.5206 },
+  'sanliurfa': { lat: 37.1674, lng: 38.7954 },
+  'malatya': { lat: 38.3552, lng: 38.3095 },
+  'denizli': { lat: 37.7765, lng: 29.0864 },
+  'kocaeli': { lat: 40.8533, lng: 29.8815 },
+  'sakarya': { lat: 40.7569, lng: 30.3783 },
+  'mersin': { lat: 36.8121, lng: 34.6415 }
+};
 
 /* ── NAMAZ VAKİTLERİ ── */
 async function fetchPrayerTimes() {
   try {
+    const cityName = (S.namazCity || 'Konya').trim();
+    const cityKey = cityName.toLowerCase()
+      .replace(/ı/g, 'i').replace(/ğ/g, 'g').replace(/ü/g, 'u')
+      .replace(/ş/g, 's').replace(/ö/g, 'o').replace(/ç/g, 'c');
+    
     // Önce cache kontrol et — aynı gün + aynı şehir ise API'ye gitme
     try {
       const cached = JSON.parse(localStorage.getItem('mikat-prayer-cache') || 'null');
-      if (cached && cached.date === today() && cached.city === (S.namazCity || 'Konya')) {
+      if (cached && cached.date === today() && cached.city?.toLowerCase() === cityName.toLowerCase() && Array.isArray(cached.prayers)) {
         PRAYERS = cached.prayers;
         SUNRISE_TIME = cached.sunrise || null;
         IMSAK_TIME = cached.imsak || null;
-        document.getElementById('namazSource').textContent = '📦 Önbellekten — ' + S.namazCity;
+        const srcEl = document.getElementById('namazSource');
+        if (srcEl) srcEl.textContent = '📦 Önbellekten — ' + cityName;
         renderNamaz();
         renderHeaderPrayerVakit();
         initHeaderAssistant();
@@ -896,11 +1096,34 @@ async function fetchPrayerTimes() {
       }
     } catch (e) { }
 
-    const r = await fetch(`https://api.aladhan.com/v1/timingsByCity?city=${encodeURIComponent(S.namazCity || 'Konya')}&country=TR&method=13`);
+    const nowD = new Date();
+    const dateStr = `${String(nowD.getDate()).padStart(2,'0')}-${String(nowD.getMonth()+1).padStart(2,'0')}-${nowD.getFullYear()}`;
+    let apiUrl = '';
+    const knownCoords = TURKEY_CITY_COORDS[cityKey];
+    if (knownCoords) {
+      apiUrl = `https://api.aladhan.com/v1/timings/${dateStr}?latitude=${knownCoords.lat}&longitude=${knownCoords.lng}&method=13`;
+    } else {
+      apiUrl = `https://api.aladhan.com/v1/timingsByCity/${dateStr}?city=${encodeURIComponent(cityName)}&country=Turkey&method=13`;
+    }
+
+    const r = await fetch(apiUrl);
     if (!r.ok) throw new Error('API hatası');
     const j = await r.json();
-    const t = j.data.timings;
-    SUNRISE_TIME = t.Sunrise.slice(0, 5);
+    const t = j?.data?.timings;
+    if (!t?.Fajr || !t?.Dhuhr) throw new Error('Geçersiz vakit verisi');
+
+    if (j?.data?.date?.hijri) {
+      try {
+        const hObj = j.data.date.hijri;
+        const HIJRI_MONTHS_TR = ['Muharrem', 'Sefer', 'Rebiülevvel', 'Rebiülahir', 'Cemaziyelevvel', 'Cemaziyelahir', 'Recep', 'Şaban', 'Ramazan', 'Şevval', 'Zilkade', 'Zilhicce'];
+        const mNum = parseInt(hObj.month?.number || 1, 10);
+        const mName = HIJRI_MONTHS_TR[mNum - 1] || 'Muharrem';
+        const officialStr = `${parseInt(hObj.day, 10)} ${mName} ${hObj.year}`;
+        localStorage.setItem('mikat-hijri-official', JSON.stringify({ date: today(), str: officialStr }));
+      } catch (e) { }
+    }
+
+    SUNRISE_TIME = t.Sunrise ? t.Sunrise.slice(0, 5) : null;
     IMSAK_TIME = t.Imsak ? t.Imsak.slice(0, 5) : null;
     PRAYERS = [
       { n: 'Sabah', t: t.Fajr.slice(0, 5), h: parseInt(t.Fajr) },
@@ -909,15 +1132,22 @@ async function fetchPrayerTimes() {
       { n: 'Akşam', t: t.Maghrib.slice(0, 5), h: parseInt(t.Maghrib) },
       { n: 'Yatsı', t: t.Isha.slice(0, 5), h: parseInt(t.Isha) },
     ];
-    // Günlük cache — aynı günde tekrar API çağrısını önler
-    try { localStorage.setItem('mikat-prayer-cache', JSON.stringify({ date: today(), city: S.namazCity || 'Konya', prayers: PRAYERS, sunrise: SUNRISE_TIME, imsak: IMSAK_TIME })); } catch (e) { }
-    document.getElementById('namazSource').textContent = '🌐 Canlı veri — ' + S.namazCity;
+
+    try {
+      localStorage.setItem('mikat-prayer-cache', JSON.stringify({
+        date: today(), city: cityName, prayers: PRAYERS, sunrise: SUNRISE_TIME, imsak: IMSAK_TIME
+      }));
+    } catch (e) { }
+
+    const srcEl = document.getElementById('namazSource');
+    if (srcEl) srcEl.textContent = '🌐 Canlı Diyanet Verisi — ' + cityName;
     renderNamaz();
     renderHeaderPrayerVakit();
     initHeaderAssistant();
     if (S.notifEnabled) scheduleNotifs();
   } catch (e) {
-    document.getElementById('namazSource').textContent = '📡 Çevrimdışı — varsayılan saatler';
+    const srcEl = document.getElementById('namazSource');
+    if (srcEl) srcEl.textContent = '📡 Çevrimdışı — varsayılan saatler';
     renderHeaderPrayerVakit();
     initHeaderAssistant();
   }
@@ -936,13 +1166,26 @@ function autoReset() {
   S.lastReset = td; save();
 }
 
-/* ── GÖREV BUGÜN MI? ── */
+function tomorrow() {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
 function isTaskDueToday(t) {
+  if (!t) return false;
   const td = today();
-  if (t.done) return false;
   if (t.due === td) return true;
-  if (t.due && t.due < td) return true;
+  if (t.due && t.due < td && !t.done) return true;
   if (!t.due) return isRepeatDueOn(t, td);
+  return false;
+}
+
+function isTaskDueTomorrow(t) {
+  if (!t) return false;
+  const tm = tomorrow();
+  if (t.due === tm) return true;
+  if (!t.due) return isRepeatDueOn(t, tm);
   return false;
 }
 
@@ -992,7 +1235,7 @@ function toggleRepDays(preselect) {
     end.style.display = '';
   } else if (rep === 'her_2_gunde') {
     interval.style.display = '';
-    document.getElementById('fRepInterval').value = 2;
+    const repInt = document.getElementById('fRepInterval'); if (repInt) repInt.value = 2;
     end.style.display = '';
   } else if (rep === 'ozel') {
     interval.style.display = '';
@@ -1016,41 +1259,43 @@ function getRepDays(rep) {
 /* ── GÖREV CRUD ── */
 function openAdd(catKey) {
   editId = null; tmpSubs = [];
-  document.getElementById('mTitle').textContent = '✏️ Yeni Görev';
-  ['fName', 'fNote', 'fDue', 'fTag', 'fReminder', 'fRepInterval', 'fRepEnd'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('fPri').value = 'orta';
-  document.getElementById('fRep').value = 'yok';
-  document.getElementById('fRemRep').value = 'none';
-  document.getElementById('fEst').value = '';
-  document.getElementById('fCat').value = catKey || activeCat || Object.keys(CATS)[0] || 'diger';
-  document.getElementById('subPrev').innerHTML = '';
+  const mTitle = document.getElementById('mTitle'); if (mTitle) mTitle.textContent = '✏️ Yeni Görev';
+  ['fName', 'fNote', 'fDue', 'fTag', 'fReminder', 'fRepInterval', 'fRepEnd'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  const fPri = document.getElementById('fPri'); if (fPri) fPri.value = 'orta';
+  const fRep = document.getElementById('fRep'); if (fRep) fRep.value = 'yok';
+  const fRemRep = document.getElementById('fRemRep'); if (fRemRep) fRemRep.value = 'none';
+  const fEst = document.getElementById('fEst'); if (fEst) fEst.value = '';
+  const fCat = document.getElementById('fCat'); if (fCat) fCat.value = catKey || activeCat || Object.keys(CATS)[0] || 'diger';
+  const subPrev = document.getElementById('subPrev'); if (subPrev) subPrev.innerHTML = '';
   toggleRepDays();
-  document.getElementById('taskModal').classList.add('on');
-  setTimeout(() => document.getElementById('fName').focus(), 80);
+  document.getElementById('taskModal')?.classList.add('on');
+  setTimeout(() => document.getElementById('fName')?.focus(), 80);
 }
-function openAddForSelectedDay() { openAdd(); document.getElementById('fDue').value = selectedDate || today(); }
+function openAddForSelectedDay() { openAdd(); const fDue = document.getElementById('fDue'); if (fDue) fDue.value = selectedDate || today(); }
 function openEdit(id) {
   const t = S.tasks.find(x => x.id === id); if (!t) return;
   editId = id; tmpSubs = [...(t.subs || [])];
-  document.getElementById('mTitle').textContent = '✏️ Görevi Düzenle';
-  document.getElementById('fName').value = t.name;
-  document.getElementById('fCat').value = t.cat;
-  document.getElementById('fPri').value = t.pri;
-  document.getElementById('fDue').value = t.due || '';
-  document.getElementById('fReminder').value = t.reminderTime || '';
-  document.getElementById('fRemRep').value = t.reminderRepeat || 'none';
-  document.getElementById('fRep').value = t.rep || 'yok';
-  document.getElementById('fRepInterval').value = t.repInterval || '';
-  document.getElementById('fRepEnd').value = t.repEnd || '';
-  document.getElementById('fEst').value = t.est || '';
-  document.getElementById('fTag').value = t.tag || '';
-  document.getElementById('fNote').value = t.note || '';
+  const mTitle = document.getElementById('mTitle'); if (mTitle) mTitle.textContent = '✏️ Görevi Düzenle';
+  const fName = document.getElementById('fName'); if (fName) fName.value = t.name;
+  const fCat = document.getElementById('fCat'); if (fCat) fCat.value = t.cat;
+  const fPri = document.getElementById('fPri'); if (fPri) fPri.value = t.pri;
+  const fDue = document.getElementById('fDue'); if (fDue) fDue.value = t.due || '';
+  const fRem = document.getElementById('fReminder'); if (fRem) fRem.value = t.reminderTime || '';
+  const fRemRep = document.getElementById('fRemRep'); if (fRemRep) fRemRep.value = t.reminderRepeat || 'none';
+  const fRep = document.getElementById('fRep'); if (fRep) fRep.value = t.rep || 'yok';
+  const fRepInt = document.getElementById('fRepInterval'); if (fRepInt) fRepInt.value = t.repInterval || '';
+  const fRepEnd = document.getElementById('fRepEnd'); if (fRepEnd) fRepEnd.value = t.repEnd || '';
+  const fEst = document.getElementById('fEst'); if (fEst) fEst.value = t.est || '';
+  const fTag = document.getElementById('fTag'); if (fTag) fTag.value = t.tag || '';
+  const fNote = document.getElementById('fNote'); if (fNote) fNote.value = t.note || '';
   toggleRepDays(t.repDays || []);
   renderSubPrev();
-  document.getElementById('taskModal').classList.add('on');
-  setTimeout(() => document.getElementById('fName').focus(), 80);
+  document.getElementById('taskModal')?.classList.add('on');
+  setTimeout(() => document.getElementById('fName')?.focus(), 80);
 }
-function closeModal(id) { document.getElementById(id).classList.remove('on'); }
+function closeModal(id) { document.getElementById(id)?.classList.remove('on'); }
 
 /**
  * H-13: Generic confirm modal — native confirm() yerine PWA uyumlu dialog
@@ -1062,16 +1307,20 @@ function closeModal(id) { document.getElementById(id).classList.remove('on'); }
  * @param {boolean} danger - true ise kırmızı .mdel, false ise yeşil .msave stili
  */
 function showConfirm(title, msg, detail, okLabel, onOk, danger = false) {
-  document.getElementById('confModalTitle').textContent = title;
-  document.getElementById('confTxt').textContent = msg;
+  const tEl = document.getElementById('confModalTitle'); if (tEl) tEl.textContent = title;
+  const txtEl = document.getElementById('confTxt'); if (txtEl) txtEl.textContent = msg;
   const det = document.getElementById('confDetail');
-  if (detail) { det.textContent = detail; det.style.display = ''; }
-  else { det.textContent = ''; det.style.display = 'none'; }
+  if (det) {
+    if (detail) { det.textContent = detail; det.style.display = ''; }
+    else { det.textContent = ''; det.style.display = 'none'; }
+  }
   const btn = document.getElementById('confOk');
-  btn.textContent = okLabel;
-  btn.className = danger ? 'mdel' : 'msave';
-  btn.onclick = () => { closeModal('confModal'); onOk(); };
-  document.getElementById('confModal').classList.add('on');
+  if (btn) {
+    btn.textContent = okLabel;
+    btn.className = danger ? 'mdel' : 'msave';
+    btn.onclick = () => { closeModal('confModal'); onOk(); };
+  }
+  document.getElementById('confModal')?.classList.add('on');
 }
 function saveTask() {
   const name = document.getElementById('fName').value.trim();
@@ -1088,8 +1337,8 @@ function saveTask() {
     repInterval: parseInt(document.getElementById('fRepInterval').value, 10) || null,
     repEnd: document.getElementById('fRepEnd').value,
     est: document.getElementById('fEst').value,
-    tag: document.getElementById('fTag').value.trim(),
-    note: document.getElementById('fNote').value.trim(),
+    tag: (document.getElementById('fTag')?.value || '').trim(),
+    note: (document.getElementById('fNote')?.value || '').trim(),
     subs: tmpSubs.map(s => ({ ...s })),
     done: false, created: new Date().toISOString(), completedAt: null,
   };
@@ -1108,7 +1357,10 @@ function saveTask() {
 function toggleTask(id) {
   const t = S.tasks.find(x => x.id === id); if (!t) return;
   t.done = !t.done; t.completedAt = t.done ? new Date().toISOString() : null;
-  if (t.done) triggerConfetti();
+  if (t.done) {
+    triggerConfetti();
+    try { mascotCelebrate(t.name); } catch(e) {}
+  }
   save();
   // Sadece ilgili bölümleri render et — tüm sayfayı yeniden çizme (ticker animasyonunu bozar)
   renderTasks();
@@ -1144,7 +1396,8 @@ function resetDoneTasks() {
   save(); render(); toast(`${n} tamamlanmış görev sıfırlandı.`, 'i');
 }
 // Geriye dönük uyumluluk için eski isim de çalışsın
-const clearDone = resetDoneTasks;
+function clearDone() { return resetDoneTasks(); }
+window.clearDone = clearDone;
 
 /* ── ALT GÖREVLER ── */
 function addSub() {
@@ -1154,23 +1407,353 @@ function addSub() {
 }
 function removeSub(i) { tmpSubs.splice(i, 1); renderSubPrev(); }
 function renderSubPrev() {
-  document.getElementById('subPrev').innerHTML = tmpSubs.map((s, i) =>
-    `<div class="sp-item"><span>☐ ${esc(s.text)}</span><button onclick="removeSub(${i})">✕</button></div>`
-  ).join('');
+  const el = document.getElementById('subPrev');
+  if (el) {
+    el.innerHTML = tmpSubs.map((s, i) =>
+      `<div class="sp-item"><span>☐ ${esc(s.text)}</span><button onclick="removeSub(${i})">✕</button></div>`
+    ).join('');
+  }
 }
 document.getElementById('subInp')?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addSub(); } });
 
-function toggleFabQuickAdd() {
-  const pop = document.getElementById('fabPopover');
-  const btn = document.getElementById('fabBtn');
-  if (!pop) return;
-  const isOff = pop.style.display === 'none' || !pop.style.display;
-  pop.style.display = isOff ? 'block' : 'none';
-  if (btn) btn.classList.toggle('on', isOff);
-  if (isOff) {
-    setTimeout(() => document.getElementById('qaInp')?.focus(), 80);
+/* ════════════════════════════════════════════════════════════
+   CANLI EVCİL HAYVAN / MASKOT MOTORU (LIVING PET ENGINE)
+   ════════════════════════════════════════════════════════════ */
+let mascotState = 'idle'; // 'idle', 'walking', 'hopping', 'sleeping'
+let mascotTimer = null;
+let mascotRoamTimer = null;
+let mascotAutoDismissTimer = null;
+let mascotIdleCounter = 0;
+let mascotAudioCtx = null;
+
+// Sevimli Web Audio API Sentezör Ses Efektleri (Köpek Cik/Hav Sesleri)
+function playMascotSound(type = 'happy') {
+  try {
+    if (!mascotAudioCtx) mascotAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (mascotAudioCtx.state === 'suspended') mascotAudioCtx.resume();
+    
+    const now = mascotAudioCtx.currentTime;
+    const osc = mascotAudioCtx.createOscillator();
+    const gain = mascotAudioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(mascotAudioCtx.destination);
+
+    if (type === 'happy' || type === 'hop') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, now); // D5
+      osc.frequency.exponentialRampToValueAtTime(880, now + 0.08); // A5
+      osc.frequency.setValueAtTime(1174.66, now + 0.1); // D6
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+      osc.start(now);
+      osc.stop(now + 0.22);
+    } else if (type === 'remind') {
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(523.25, now);
+      osc.frequency.exponentialRampToValueAtTime(659.25, now + 0.12);
+      osc.frequency.exponentialRampToValueAtTime(783.99, now + 0.24);
+      gain.gain.setValueAtTime(0.18, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+      osc.start(now);
+      osc.stop(now + 0.38);
+    } else if (type === 'victory') {
+      [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+        const o = mascotAudioCtx.createOscillator();
+        const g = mascotAudioCtx.createGain();
+        o.type = 'sine';
+        o.frequency.value = freq;
+        o.connect(g);
+        g.connect(mascotAudioCtx.destination);
+        const startTime = now + (idx * 0.07);
+        g.gain.setValueAtTime(0.15, startTime);
+        g.gain.exponentialRampToValueAtTime(0.001, startTime + 0.22);
+        o.start(startTime);
+        o.stop(startTime + 0.22);
+      });
+    }
+  } catch (e) {}
+}
+
+// Maskotu Uyandır
+function wakeMascotUp() {
+  const btn = document.getElementById('mascotBtn');
+  const zzz = document.getElementById('mascotZzz');
+  if (zzz) zzz.remove();
+  if (btn) btn.classList.remove('sleeping');
+  mascotIdleCounter = 0;
+  if (mascotState === 'sleeping') mascotState = 'idle';
+}
+
+// Maskot Tıklama & Etkileşim
+function onMascotClick() {
+  if (mascotState === 'sleeping') {
+    wakeMascotUp();
+    mascotHop(false);
+    playMascotSound('happy');
+    toast('🎷 Anadolu Parsı (Pars) uyandı!', 's');
+    return;
+  }
+  mascotHop(false);
+  playMascotSound('happy');
+  toggleMascotBubble();
+}
+
+function toggleMascotBubble() {
+  const bubble = document.getElementById('mascotBubble');
+  const badge = document.getElementById('mascotBadge');
+  if (!bubble) return;
+
+  wakeMascotUp();
+  const isHidden = bubble.style.display === 'none' || !bubble.style.display;
+  
+  if (isHidden) {
+    checkHabitReminders(true);
+    bubble.style.display = 'block';
+    if (badge) badge.style.display = 'none';
+    setTimeout(() => document.getElementById('qaInp')?.focus(), 100);
+  } else {
+    bubble.style.display = 'none';
   }
 }
+
+function closeMascotBubble() {
+  const bubble = document.getElementById('mascotBubble');
+  if (bubble) bubble.style.display = 'none';
+}
+
+function toggleFabQuickAdd() {
+  toggleMascotBubble();
+}
+
+// Maskot Yürütme Motoru
+function mascotWalkTo(targetX) {
+  if (window.innerWidth <= 768) return;
+  const wrapper = document.getElementById('fabWrapper');
+  const btn = document.getElementById('mascotBtn');
+  const svgCont = document.getElementById('mascotSvgContainer');
+  if (!wrapper || !btn) return;
+
+  wakeMascotUp();
+  mascotState = 'walking';
+
+  const currentX = wrapper.offsetLeft;
+  const isWalkingLeft = targetX < currentX;
+
+  if (svgCont) svgCont.style.transform = isWalkingLeft ? 'scaleX(-1)' : 'scaleX(1)';
+  btn.classList.add('walking');
+
+  wrapper.style.left = `${targetX}px`;
+
+  setTimeout(() => {
+    btn.classList.remove('walking');
+    mascotState = 'idle';
+    if (svgCont) svgCont.style.transform = 'scaleX(1)';
+  }, 2200);
+}
+
+function triggerRandomMascotWalk(isInteractive = false) {
+  if (window.innerWidth <= 768) return;
+  const minX = 30;
+  const maxX = Math.max(80, window.innerWidth - 130);
+  const randomX = Math.floor(Math.random() * (maxX - minX + 1)) + minX;
+  mascotWalkTo(randomX);
+  if (isInteractive) playMascotSound('happy');
+}
+
+// Maskot Zıplama & Takla
+function mascotHop(isBackflip = false) {
+  if (window.innerWidth <= 768) return;
+  const btn = document.getElementById('mascotBtn');
+  if (!btn) return;
+
+  wakeMascotUp();
+  playMascotSound(isBackflip ? 'victory' : 'hop');
+
+  const animClass = isBackflip ? 'backflip' : 'hopping';
+  btn.classList.add(animClass);
+
+  setTimeout(() => {
+    btn.classList.remove(animClass);
+  }, isBackflip ? 750 : 600);
+}
+
+// Alışkanlık & Görev Kutlaması (Canlı Sevinç Reaksiyonu)
+function mascotCelebrate(title = '') {
+  mascotHop(true);
+  playMascotSound('victory');
+  const bodyEl = document.getElementById('mascotBubbleBody');
+  const bubble = document.getElementById('mascotBubble');
+  if (bodyEl && bubble) {
+    const uName = S.userName || 'Dostum';
+    bodyEl.innerHTML = `🎷 <b>Harikasın ${esc(uName)}!</b> <b>"${esc(title)}"</b> görevini başardın, Pars seninle gurur duyuyor! ⭐👑`;
+    bubble.style.display = 'block';
+    setTimeout(() => { bubble.style.display = 'none'; }, 8000);
+  }
+}
+
+// 10 Dakikalık Eksik Alışkanlık Kontrolü & Detaylı İnceleme
+function checkHabitReminders(forced = false) {
+  if (!forced && window.innerWidth <= 768) return;
+  const bodyEl = document.getElementById('mascotBubbleBody');
+  const badge = document.getElementById('mascotBadge');
+  const bubble = document.getElementById('mascotBubble');
+  if (!bodyEl) return;
+
+  wakeMascotUp();
+
+  if (!S.userName) {
+    bodyEl.innerHTML = `💬 Merhaba! Ben Pars. 🎷<br><br>Sana nasıl hitap etmeliyim?<br>
+      <div style="margin-top:10px; display:flex; gap:6px;">
+        <input type="text" id="mascotNameInput" placeholder="Adınız..." style="flex:1; padding:6px 10px; border-radius:6px; border:1px solid var(--bd); background:var(--bg2); color:var(--tx); font-size:0.85rem; outline:none;" onkeydown="if(event.key==='Enter') saveMascotName()">
+        <button onclick="saveMascotName()" style="padding:6px 12px; background:var(--gold); border:none; border-radius:6px; color:#0d1117; font-weight:800; cursor:pointer;">Kaydet</button>
+      </div>
+    `;
+    if (!forced) {
+      playMascotSound('remind');
+      if (bubble) bubble.style.display = 'block';
+      if (badge) badge.style.display = 'flex';
+      mascotHop(false);
+    }
+    return;
+  }
+
+  const uName = S.userName;
+  const todayStr = today();
+  const allHabits = S.habitDefs || HABITS || [];
+  const todayHabitsDone = (S.habits && S.habits[todayStr]) || {};
+
+  // Eksik alışkanlıkları doğru hesapla (tamamlanan tekrar < hedef tekrar)
+  const missingHabits = allHabits.filter(h => {
+    const count = todayHabitsDone[h.id] || 0;
+    const target = h.target || 1;
+    return count < target;
+  });
+
+  let msg = '';
+  if (missingHabits.length > 0) {
+    const habitListHtml = missingHabits.map(h => {
+      const cur = (typeof todayHabitsDone[h.id] === 'number') ? todayHabitsDone[h.id] : (todayHabitsDone[h.id] ? 1 : 0);
+      const tar = h.target || h.t || 1;
+      const hName = h.l || h.title || h.name || h.label || 'Alışkanlık';
+      const hIcon = h.icon || h.i || '⚡';
+      return `<li style="margin:4px 0;">${hIcon} <b>${esc(hName)}</b> (${cur}/${tar})</li>`;
+    }).join('');
+
+    msg = `🎷 <b>${esc(uName)}! Bugün henüz tamamlamadığın ${missingHabits.length} alışkanlığın var:</b>
+           <ul style="margin: 8px 0 0 16px; padding: 0; text-align: left; font-size: 0.88rem; list-style-type: disc;">${habitListHtml}</ul>
+           <div style="margin-top:8px; font-size:0.82rem; color:var(--text-muted);">🔥 Haydi hamleni yap ve alışkanlığını tamamla!</div>`;
+  } else {
+    const pendingTasks = (S.tasks || []).filter(t => t.date === todayStr && !t.done);
+    if (pendingTasks.length > 0) {
+      const taskListHtml = pendingTasks.slice(0, 3).map(t => `<li style="margin:3px 0;">📋 <b>${esc(t.title || t.name || t.text || t.content || 'Görev')}</b></li>`).join('');
+      msg = `🎷 <b>Tebrikler ${esc(uName)}! Alışkanlıkların tamam.</b> Bugün yapılacak bekleyen görevlerin var:
+             <ul style="margin: 6px 0 0 16px; padding: 0; text-align: left; font-size: 0.85rem;">${taskListHtml}</ul>`;
+    } else {
+      msg = `🎷 <b>Harikasın ${esc(uName)}! 🎉</b> Bugün tüm alışkanlıklarını ve görevlerini başarıyla tamamladın. Pars seninle gurur duyuyor! 🌟👑`;
+    }
+  }
+
+  bodyEl.innerHTML = `💬 ${msg}`;
+
+  if (!forced) {
+    playMascotSound('remind');
+    if (bubble) bubble.style.display = 'block';
+    if (badge) badge.style.display = 'flex';
+    mascotHop(false);
+
+    if (mascotAutoDismissTimer) clearTimeout(mascotAutoDismissTimer);
+    mascotAutoDismissTimer = setTimeout(() => {
+      if (bubble) bubble.style.display = 'none';
+    }, 12000);
+  }
+}
+
+window.saveMascotName = function() {
+  const inp = document.getElementById('mascotNameInput');
+  if (inp && inp.value.trim().length > 0) {
+    S.userName = inp.value.trim();
+    save();
+    checkHabitReminders(true);
+    toast(`Memnun oldum, ${esc(S.userName)}!`, 's');
+  }
+}
+
+// Canlı Özgür Gezinme & Yaşam Döngüsü Motoru (Shimeji Stili)
+function initMascotReminder() {
+  if (mascotTimer) { clearInterval(mascotTimer); mascotTimer = null; }
+  if (mascotRoamTimer) { clearInterval(mascotRoamTimer); mascotRoamTimer = null; }
+
+  // Mobilde maskot motorunu çalıştırma
+  if (window.innerWidth <= 768) return;
+
+  const intervalMin = (typeof S.mascotReminderInterval === 'number') ? S.mascotReminderInterval : 10;
+
+  // 10 dakikada bir (veya yapılandırılan sürede) otomatik eksik alışkanlık hatırlatıcısı
+  if (intervalMin > 0) {
+    mascotTimer = setInterval(() => {
+      if (window.innerWidth <= 768) return;
+      checkHabitReminders(false);
+    }, intervalMin * 60 * 1000);
+  }
+
+  // 45 saniyede bir sakin özgür gezinme ve canlı hayat döngüsü (sessiz, rahatsız etmeyen)
+  mascotRoamTimer = setInterval(() => {
+    if (window.innerWidth <= 768) return;
+    const bubble = document.getElementById('mascotBubble');
+    if (bubble && bubble.style.display !== 'none') return;
+
+    mascotIdleCounter++;
+
+    // Inactive kalırsa tatlı bir uykuya dalar
+    if (mascotIdleCounter >= 5 && mascotState === 'idle') {
+      mascotState = 'sleeping';
+      const btn = document.getElementById('mascotBtn');
+      if (btn && !document.getElementById('mascotZzz')) {
+        btn.classList.add('sleeping');
+        const zzzEl = document.createElement('div');
+        zzzEl.id = 'mascotZzz';
+        zzzEl.className = 'mascot-sleep-zzz';
+        zzzEl.innerHTML = 'zZZ...';
+        btn.appendChild(zzzEl);
+      }
+      return;
+    }
+
+    if (mascotState === 'sleeping') return;
+
+    // Sakin hareket: %30 ihtimalle yürü (otomatik modda ses çalmaz)
+    const actionRnd = Math.random();
+    if (actionRnd < 0.30) {
+      triggerRandomMascotWalk(false);
+    }
+  }, 45000);
+
+  // NOT: 5 saniyelik ilk açılış pop-up'ı kullanıcıyı rahatsız etmemesi için kaldırıldı.
+  // Maskot tüm sürümlerde 10 dakikada bir hatırlatma yapar.
+}
+
+window.addEventListener('resize', () => {
+  if (window.innerWidth <= 768) {
+    if (mascotTimer) { clearInterval(mascotTimer); mascotTimer = null; }
+    if (mascotRoamTimer) { clearInterval(mascotRoamTimer); mascotRoamTimer = null; }
+    closeMascotBubble();
+  } else {
+    if (!mascotTimer && !mascotRoamTimer) {
+      initMascotReminder();
+    }
+  }
+});
+
+function saveMascotIntervalFromSettings() {
+  const sel = document.getElementById('settingsMascotInterval');
+  if (sel) {
+    S.mascotReminderInterval = parseInt(sel.value, 10);
+    save();
+    initMascotReminder();
+    toast(`Maskot hatırlatıcı ${S.mascotReminderInterval > 0 ? S.mascotReminderInterval + ' dakikada bir çalışacak.' : 'kapatıldı.'}`, 's');
+  }
+}
+window.saveMascotIntervalFromSettings = saveMascotIntervalFromSettings;
 
 function appendFabTag(tag) {
   const inp = document.getElementById('qaInp');
@@ -1196,8 +1779,7 @@ function quickAdd() {
     subs: [], done: false, created: new Date().toISOString(), completedAt: null,
   });
   save(); render(); inp.value = ''; toast('Hızlı görev eklendi!', 's');
-  const pop = document.getElementById('fabPopover');
-  if (pop && pop.style.display !== 'none') toggleFabQuickAdd();
+  closeMascotBubble();
 }
 (document.getElementById('qaInp') || document.getElementById('unifiedInput'))?.addEventListener('keydown', e => { if (e.key === 'Enter') quickAdd(); });
 
@@ -1216,19 +1798,52 @@ function setFilter(f, el) {
   el.classList.add('on'); renderTasks();
 }
 
-/* ── NAMAZ ── */
 function toggleNamaz(n) {
   const d = today();
   if (!S.prayers[d]) S.prayers[d] = {};
   S.prayers[d][n] = !S.prayers[d][n];
-  save(); renderNamaz(); renderDayProg();
+  save(); renderNamaz(); renderNamazProg(); renderDayProg();
+  try { updateMobileStats(); } catch(e) {}
 }
+
+let _activePrayerForType = null;
+function openPrayerTypeModal(pName) {
+  _activePrayerForType = pName;
+  const title = document.getElementById('ptModalName');
+  if (title) title.textContent = (pName ? pName + ' Namazı' : 'Namaz');
+  openModal('prayerTypeModal');
+}
+window.openPrayerTypeModal = openPrayerTypeModal;
+
+function setPrayerType(type) {
+  const d = today();
+  if (!S.prayers[d]) S.prayers[d] = {};
+  if (_activePrayerForType) {
+    if (type) {
+      S.prayers[d][_activePrayerForType] = type;
+    } else {
+      delete S.prayers[d][_activePrayerForType];
+    }
+    save();
+    renderNamaz();
+    renderNamazProg();
+    renderDayProg();
+    try { updateMobileStats(); } catch(e) {}
+  }
+  closeModal('prayerTypeModal');
+}
+window.setPrayerType = setPrayerType;
 
 /* ── ALIŞKANLIKLAR ── */
 function toggleHabit(id, ds) {
+  if (!S.habits) S.habits = {};
   if (!S.habits[ds]) S.habits[ds] = {};
   S.habits[ds][id] = !S.habits[ds][id];
-  save(); renderHabits();
+  save();
+  renderHabits();
+  try { updateMobileStats(); } catch(e) {}
+  try { renderNamazProg(); } catch(e) {};
+  try { renderDayProg(); } catch(e) {}
   if (document.getElementById('v-habits')?.classList.contains('on') || document.getElementById('v-analytics')?.classList.contains('on')) renderAnalytics();
 }
 function streak(id) {
@@ -1242,16 +1857,108 @@ function streak(id) {
 /* ── SAYAÇ ── */
 // H-03: Timer Date.now() bazlı — arka plan tab'ında negatife düşmez
 const T = { running: false, remain: 1500, total: 1500, iv: null, startedAt: null, pausedRemain: null };
+function clearBreakMode() {
+  document.querySelectorAll('.focus-mode-btn, .focus-preset-chip, .tpre').forEach(b => b.classList.remove('on'));
+  const workBtn = document.getElementById('btnModeWork') || document.querySelector('.focus-mode-btn');
+  if (workBtn) workBtn.classList.add('on');
+  const chip25 = document.querySelectorAll('.focus-preset-chip')[1];
+  if (chip25) chip25.classList.add('on');
+  const cancelBtn = document.getElementById('btnCancelBreak');
+  if (cancelBtn) cancelBtn.style.display = 'none';
+
+  T.total = 1500;
+  T.remain = 1500;
+  T.pausedRemain = null;
+  clearInterval(T.iv);
+  T.running = false;
+  T.startedAt = null;
+
+  const statusLbl = document.getElementById('tph');
+  if (statusLbl) statusLbl.textContent = '💻 Çalışma Zamanı';
+  const btn = document.getElementById('tbstart');
+  if (btn) btn.textContent = '▶️ Başlat';
+  drawTimer();
+  toast('Mola seçimi kaldırıldı, 25d Çalışma moduna dönüldü.', 'i');
+}
+
 function setPreset(m, el) {
-  document.querySelectorAll('.tpre').forEach(b => b.classList.remove('on'));
-  el.classList.add('on'); timerReset(); T.pausedRemain = null; T.remain = m * 60; T.total = m * 60; drawTimer();
+  const wasAlreadyOn = el && el.classList.contains('on');
+  document.querySelectorAll('.focus-mode-btn, .focus-preset-chip, .tpre').forEach(b => b.classList.remove('on'));
+  
+  if (wasAlreadyOn) {
+    clearBreakMode();
+    return;
+  }
+  
+  if (el) el.classList.add('on');
+  T.total = m * 60;
+  T.remain = m * 60;
+  const statusLbl = document.getElementById('tph');
+  if (statusLbl) statusLbl.textContent = `${m}dk Süre`;
+  
+  T.pausedRemain = null;
+  clearInterval(T.iv);
+  T.running = false;
+  T.startedAt = null;
+  const btn = document.getElementById('tbstart');
+  if (btn) btn.textContent = '▶️ Başlat';
+  drawTimer();
+}
+
+function drawTimer() {
+  const m = String(Math.floor(T.remain / 60)).padStart(2, '0');
+  const s = String(T.remain % 60).padStart(2, '0');
+  const tnum = document.getElementById('tnum');
+  if (tnum) tnum.textContent = `${m}:${s}`;
+  const ring = document.getElementById('timerRing');
+  if (ring) {
+    const circ = 2 * Math.PI * 45;
+    ring.style.strokeDasharray = circ.toFixed(2);
+    ring.style.strokeDashoffset = (circ * (1 - T.remain / T.total)).toFixed(1);
+  }
+  const cat = document.getElementById('timerCat')?.value;
+  const lbl = document.getElementById('timerCatLbl');
+  if (lbl) lbl.textContent = cat && CATS[cat] ? `${CATS[cat].i} ${CATS[cat].l}` : '';
+}
+
+function setPomodoroMode(mode, mins, el) {
+  const wasAlreadyOn = el && el.classList.contains('on');
+  if (wasAlreadyOn) {
+    clearBreakMode();
+    return;
+  }
+
+  document.querySelectorAll('.focus-mode-btn, .focus-preset-chip, .tpre').forEach(b => b.classList.remove('on'));
+  if (el) el.classList.add('on');
+  
+  const cancelBtn = document.getElementById('btnCancelBreak');
+  if (cancelBtn) {
+    cancelBtn.style.display = (mode === 'shortBreak' || mode === 'longBreak') ? 'inline-block' : 'none';
+  }
+
+  T.total = mins * 60;
+  T.remain = mins * 60;
+  const statusLbl = document.getElementById('tph');
+  if (statusLbl) {
+    if (mode === 'work') statusLbl.textContent = '💻 Çalışma Zamanı';
+    else if (mode === 'shortBreak') statusLbl.textContent = '☕ Kısa Mola';
+    else if (mode === 'longBreak') statusLbl.textContent = '🌴 Uzun Mola';
+  }
+
+  T.pausedRemain = null;
+  clearInterval(T.iv);
+  T.running = false;
+  T.startedAt = null;
+  const btn = document.getElementById('tbstart');
+  if (btn) btn.textContent = '▶️ Başlat';
+  drawTimer();
 }
 function timerToggle() {
   if (T.running) {
     clearInterval(T.iv); T.running = false;
     T.pausedRemain = T.remain;
-    document.getElementById('tbstart').textContent = '▶ Devam';
-    document.getElementById('tph').textContent = 'Duraklatıldı';
+    const tb1 = document.getElementById('tbstart'); if (tb1) tb1.textContent = '▶ Devam';
+    const tph1 = document.getElementById('tph'); if (tph1) tph1.textContent = 'Duraklatıldı';
   } else {
     T.running = true;
     // Duraklatmadan devam ediyorsak kalan süreyi kullan
@@ -1259,8 +1966,8 @@ function timerToggle() {
     T.pausedRemain = null;
     T.startedAt = Date.now();
     const snapRemain = startRemain;
-    document.getElementById('tbstart').textContent = '⏸ Duraklat';
-    document.getElementById('tph').textContent = 'Odaklanıyor...';
+    const tb2 = document.getElementById('tbstart'); if (tb2) tb2.textContent = '⏸ Duraklat';
+    const tph2 = document.getElementById('tph'); if (tph2) tph2.textContent = 'Odaklanıyor...';
     T.iv = setInterval(() => {
       const elapsed = Math.floor((Date.now() - T.startedAt) / 1000);
       T.remain = Math.max(0, snapRemain - elapsed);
@@ -1346,8 +2053,8 @@ function timerToggle() {
         renderWeeklyQuranAnalysis();
         renderSelects();
 
-        document.getElementById('tbstart').textContent = '▶ Başlat';
-        document.getElementById('tph').textContent = 'Tamamlandı 🎉';
+        const tbEnd = document.getElementById('tbstart'); if (tbEnd) tbEnd.textContent = '▶ Başlat';
+        const tphEnd = document.getElementById('tph'); if (tphEnd) tphEnd.textContent = 'Tamamlandı 🎉';
         const finalMsg = completedItemName 
           ? `🎉 Odaklanma Seansı Tamamlandı! ${completedItemName} otomatik olarak tamamlandı.`
           : '🎉 Odaklanma Seansı Tamamlandı!';
@@ -1362,22 +2069,94 @@ function timerToggle() {
 function timerReset() {
   clearInterval(T.iv); T.running = false; T.remain = T.total;
   T.startedAt = null; T.pausedRemain = null;
-  document.getElementById('tbstart').textContent = '▶ Başlat';
-  document.getElementById('tph').textContent = 'Hazır'; drawTimer();
+  const btn = document.getElementById('tbstart');
+  if (btn) btn.textContent = '▶️ Başlat';
+  const lbl = document.getElementById('tph');
+  if (lbl) lbl.textContent = 'Hazır'; drawTimer();
 }
-function drawTimer() {
-  const m = String(Math.floor(T.remain / 60)).padStart(2, '0');
-  const s = String(T.remain % 60).padStart(2, '0');
-  document.getElementById('tnum').textContent = `${m}:${s}`;
-  const circ = 2 * Math.PI * 44;
-  document.getElementById('timerRing').style.strokeDashoffset = (circ * (1 - T.remain / T.total)).toFixed(1);
-  const cat = document.getElementById('timerCat').value;
-  document.getElementById('timerCatLbl').textContent = cat && CATS[cat] ? `${CATS[cat].i} ${CATS[cat].l}` : '';
+
+window.toggleTaskFocusPanel = function() {
+  const panel = document.getElementById('tasksFocusPanel');
+  const btn = document.getElementById('btnFocusPanelToggle');
+  if (!panel) return;
+  
+  const isCurrentlyOpen = panel.classList.contains('show') || (panel.style.display !== 'none' && panel.style.display !== '');
+  
+  if (isCurrentlyOpen) {
+    panel.classList.remove('show');
+    panel.style.display = 'none';
+    if (btn) btn.classList.remove('on');
+  } else {
+    panel.classList.add('show');
+    panel.style.display = 'grid';
+    if (btn) btn.classList.add('on');
+    renderCatTimes();
+    renderSessions();
+    drawTimer();
+  }
+};
+
+function renderCatTimes() {
+  const container = document.getElementById('catTimes');
+  if (!container) return;
+
+  const d = today();
+  const times = S.catTime[d] || {};
+  
+  let maxSecs = 1;
+  Object.values(times).forEach(sec => {
+    if (sec > maxSecs) maxSecs = sec;
+  });
+
+  const catEntries = Object.entries(CATS);
+  if (catEntries.length === 0) {
+    container.innerHTML = `<div style="font-size:0.75rem; color:var(--tx3); text-align:center; padding:10px;">Henüz odaklanma kaydı yok</div>`;
+    return;
+  }
+
+  container.innerHTML = catEntries.map(([key, cat]) => {
+    const sec = times[key] || 0;
+    const mins = Math.floor(sec / 60);
+    const hrs = Math.floor(mins / 60);
+    const remMins = mins % 60;
+    
+    let timeStr = '0 dk';
+    if (hrs > 0) {
+      timeStr = `${hrs}sa ${remMins}dk`;
+    } else if (mins > 0) {
+      timeStr = `${mins}dk`;
+    }
+
+    const pct = sec > 0 ? Math.min(100, Math.max(10, Math.round((sec / maxSecs) * 100))) : 0;
+    const isSpent = sec > 0;
+    const catColor = safeColor(cat.c);
+
+    return `
+      <div style="background:var(--sf2); border:1px solid ${isSpent ? catColor : 'var(--bd)'}; border-radius:10px; padding:8px 12px; margin-bottom:8px; display:flex; flex-direction:column; gap:6px; transition:all 0.2s ease;">
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:1.1rem; background:${cat.bg || 'var(--sf)'}; width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center;">${esc(cat.i)}</span>
+            <span style="font-size:0.84rem; font-weight:800; color:${catColor};">${esc(cat.l)}</span>
+          </div>
+          <span style="font-size:0.76rem; font-weight:900; font-family:'JetBrains Mono', monospace; padding:3px 10px; border-radius:8px; background:${isSpent ? catColor + '22' : 'var(--sf)'}; color:${isSpent ? catColor : 'var(--tx3)'}; border:1px solid ${isSpent ? catColor : 'var(--bd)'};">
+            ⚡ ${timeStr}
+          </span>
+        </div>
+        <div style="height:6px; background:var(--bd); border-radius:4px; overflow:hidden; margin-top:2px;">
+          <div style="width:${pct}%; height:100%; background:linear-gradient(90deg, ${catColor}, var(--gold)); border-radius:4px; transition:width 0.4s ease;"></div>
+        </div>
+      </div>
+    `;
+  }).join('');
 }
+
 function renderSessions() {
   const n = S.timerSess[today()] || 0;
-  document.getElementById('sdots').innerHTML =
-    Array.from({ length: 4 }, (_, i) => `<div class="sdot${i < n ? ' done' : ''}"></div>`).join('');
+  const sdots = document.getElementById('sdots');
+  if (sdots) {
+    sdots.innerHTML =
+      Array.from({ length: 4 }, (_, i) => `<div class="sdot${i < n ? ' done' : ''}"></div>`).join('');
+  }
 }
 
 function startFocusForTask(taskId, defaultMins = 30) {
@@ -1421,13 +2200,17 @@ window.showView = function (v, el) {
   // Sync menu items in vertical sidebar menu, mobile nav, and header (menu-item-vertical, menu-item, mb-nav-item)
   document.querySelectorAll('.menu-item-vertical, .menu-item, .mb-nav-item').forEach(t => {
     const oc = t.getAttribute('onclick') || '';
-    t.classList.toggle('on', oc.includes(`'${v}'`));
+    const isTarget = oc.includes(`'${v}'`);
+    t.classList.toggle('on', isTarget);
+    if (typeof t.blur === 'function') {
+      try { t.blur(); } catch (e) {}
+    }
   });
 
   if (v === 'analytics' || v === 'habits') { renderHabits(); renderAnalytics(); renderWeeklyIbadet(); renderWeeklyZikirAnalysis(); renderWeeklyQuranAnalysis(); }
   if (v === 'calendar') { renderCalendar(); }
   if (v === 'prayers') { renderNamaz(); }
-  if (v === 'zikir') { renderEsma(); renderDailyZikir(); renderZikirView(); }
+  if (v === 'zikir') { renderEsma(); renderDailyZikir(); renderZikirView(); startZikirSlideAutoPlay(); }
   if (v === 'tasks') { renderCatCards(); renderTasks(); renderSessions(); renderCatTimes(); drawTimer(); }
   if (v === 'quran') { renderQuranView(); }
   if (v === 'dua') { renderDuaView(); }
@@ -1440,6 +2223,18 @@ window.showView = function (v, el) {
   renderHeaderAssistant();
 };
 function showView(v, el) { window.showView(v, el); }
+
+function toggleSidebarExtraMenu(btn) {
+  const group = btn.closest('.sidebar-collapsible-group');
+  if (!group) return;
+  const content = group.querySelector('.sidebar-extra-menu-content');
+  const arr = btn.querySelector('.sb-arr');
+  if (!content) return;
+
+  const isClosed = content.style.display === 'none' || !content.style.display;
+  content.style.display = isClosed ? 'flex' : 'none';
+  if (arr) arr.style.transform = isClosed ? 'rotate(90deg)' : 'rotate(0deg)';
+}
 
 /* ── AKILLI TAHTA MODU VE TAM EKRAN ── */
 function toggleSmartboardMode() {
@@ -1485,11 +2280,72 @@ window.addEventListener('click', function (e) {
 /* ── KATEGORİ YÖNETİMİ ── */
 function openSettings() {
   renderSettings();
+  const generalBtn = document.getElementById('stab-general');
+  if (generalBtn) switchSettingsTab('general', generalBtn);
   document.getElementById('settingsModal')?.classList.add('on');
 }
+
+function switchSettingsTab(tabKey, btn) {
+  document.querySelectorAll('.settings-tab-content').forEach(el => el.style.display = 'none');
+  const target = document.getElementById(`setTab-${tabKey}`);
+  if (target) target.style.display = 'flex';
+
+  const tabContainer = document.querySelector('#settingsModal .fbar-segmented');
+  if (tabContainer) {
+    tabContainer.querySelectorAll('.fchip').forEach(b => b.classList.remove('on'));
+  }
+  if (btn) btn.classList.add('on');
+}
+
+function saveNamazCityFromSettings() {
+  const inp = document.getElementById('namazCityInput');
+  if (inp && inp.value.trim()) {
+    S.namazCity = inp.value.trim();
+    save();
+    try { localStorage.removeItem('mikat-prayer-cache'); } catch (e) {}
+    fetchPrayerTimes();
+    toast('Namaz şehri kaydedildi & vakitler güncellendi: ' + S.namazCity, 's');
+  }
+}
+
+function saveUserNameFromSettings() {
+  const inp = document.getElementById('userNameInput');
+  if (inp && inp.value.trim()) {
+    S.userName = inp.value.trim();
+    save();
+    toast('Kullanıcı adı kaydedildi: ' + S.userName, 's');
+  }
+}
+
+function updateSettingsThemeNotifUI() {
+  const isDark = document.body.classList.contains('dark');
+  const themeLbl = document.getElementById('currentThemeLabel');
+  if (themeLbl) {
+    themeLbl.textContent = isDark ? 'Mevcut: Koyu Tema 🌙' : 'Mevcut: Açık Tema ☀️';
+  }
+
+  const notifToggle = document.getElementById('settingsNotifToggle');
+  const notifLbl = document.getElementById('currentNotifLabel');
+  if (notifToggle) {
+    notifToggle.checked = !!S.notifEnabled;
+  }
+  if (notifLbl) {
+    notifLbl.textContent = S.notifEnabled ? 'Bildirimler Açık ✅' : 'Bildirimler Kapalı ⚪';
+  }
+}
+
 function renderSettings() {
+  updateSettingsThemeNotifUI();
   const cityInp = document.getElementById('namazCityInput');
   if (cityInp) cityInp.value = S.namazCity || 'Konya';
+
+  const userInp = document.getElementById('userNameInput');
+  if (userInp) userInp.value = S.userName || '';
+
+  const mascotSel = document.getElementById('settingsMascotInterval');
+  if (mascotSel) {
+    mascotSel.value = S.mascotReminderInterval !== undefined ? S.mascotReminderInterval : 10;
+  }
 
   const autoB = document.getElementById('autoBackupToggle');
   if (autoB) autoB.checked = !!S.autoBackup;
@@ -1506,19 +2362,117 @@ function renderSettings() {
       ? `Konum: ${S.lat.toFixed(4)}, ${S.lng.toFixed(4)}`
       : 'Konum kaydedilmedi.';
   }
+
+  // Seçmeli Modüller
+  if (!S.customMenus) S.customMenus = { komutrotasi: false, teacher: false, books: false };
+  if (!S.customMenuNames) S.customMenuNames = { komutrotasi: '🌐 Komut Rotası', teacher: '🏫 Bilişimci Hocam', books: '📚 Kitaplık' };
+
+  // Hatalı veya çakışan modül isimlerini düzelt
+  const bLowerR = (S.customMenuNames.books || '').toLowerCase();
+  if (!bLowerR || !bLowerR.includes('kitap') || bLowerR.includes('bilisim') || bLowerR.includes('bilişim') || bLowerR.includes('hocam') || bLowerR.includes('test')) {
+    S.customMenuNames.books = '📚 Kitaplık';
+    save();
+  }
+  if (S.customMenuNames.komutrotasi && S.customMenuNames.komutrotasi.toLowerCase().includes('test')) S.customMenuNames.komutrotasi = '🌐 Komut Rotası';
+  if (S.customMenuNames.teacher && S.customMenuNames.teacher.toLowerCase().includes('test')) S.customMenuNames.teacher = '🏫 Bilişimci Hocam';
+
+  const toggleKomut = document.getElementById('menuToggleKomut');
+  if (toggleKomut) toggleKomut.checked = S.customMenus.komutrotasi === true;
+  const toggleTeacher = document.getElementById('menuToggleTeacher');
+  if (toggleTeacher) toggleTeacher.checked = S.customMenus.teacher === true;
+  const toggleBooks = document.getElementById('menuToggleBooks');
+  if (toggleBooks) toggleBooks.checked = S.customMenus.books === true;
+
+  const nameKomut = document.getElementById('menuNameKomut');
+  if (nameKomut) nameKomut.value = S.customMenuNames.komutrotasi || '🌐 Komut Rotası';
+  const nameTeacher = document.getElementById('menuNameTeacher');
+  if (nameTeacher) nameTeacher.value = S.customMenuNames.teacher || '🏫 Bilişimci Hocam';
+  const nameBooks = document.getElementById('menuNameBooks');
+  if (nameBooks) nameBooks.value = S.customMenuNames.books || '📚 Kitaplık';
+}
+
+function applyCustomMenusUI() {
+  if (!S.customMenus) S.customMenus = { komutrotasi: false, teacher: false, books: false };
+  if (!S.customMenuNames) S.customMenuNames = { komutrotasi: '🌐 Komut Rotası', teacher: '🏫 Bilişimci Hocam', books: '📚 Kitaplık' };
+  
+  // Hatalı veya çakışan modül isimlerini düzelt
+  const bLowerA = (S.customMenuNames.books || '').toLowerCase();
+  if (!bLowerA || !bLowerA.includes('kitap') || bLowerA.includes('bilisim') || bLowerA.includes('bilişim') || bLowerA.includes('hocam') || bLowerA.includes('test')) {
+    S.customMenuNames.books = '📚 Kitaplık';
+  }
+  if (S.customMenuNames.komutrotasi && S.customMenuNames.komutrotasi.toLowerCase().includes('test')) S.customMenuNames.komutrotasi = '🌐 Komut Rotası';
+  if (S.customMenuNames.teacher && S.customMenuNames.teacher.toLowerCase().includes('test')) S.customMenuNames.teacher = '🏫 Bilişimci Hocam';
+
+  const defNames = {
+    komutrotasi: '🌐 Komut Rotası',
+    teacher: '🏫 Bilişimci Hocam',
+    books: '📚 Kitaplık'
+  };
+
+  ['komutrotasi', 'teacher', 'books'].forEach(key => {
+    const isShow = S.customMenus[key] === true;
+    const customName = S.customMenuNames[key] || defNames[key];
+
+    // Sol panel, Mobil drawer ve Alt gezinti menüsü görünürlük kontrolü
+    const btns = document.querySelectorAll(`[data-view="${key}"]`);
+    btns.forEach(btn => {
+      btn.style.display = isShow ? 'flex' : 'none';
+      if (btn.classList.contains('menu-item-vertical')) {
+        btn.textContent = customName;
+      }
+    });
+
+    // Sayfa başlığını güncelle
+    const pageTitleEl = document.querySelector(`#v-${key} .page-title`);
+    if (pageTitleEl) {
+      pageTitleEl.textContent = customName;
+    }
+    
+    // Eğer şu an aktif olan görünüm gizleniyorsa Takvim'e yönlendir
+    const activeViewEl = document.querySelector('.view.on');
+    if (!isShow && activeViewEl && activeViewEl.id === `v-${key}`) {
+      const calBtn = document.querySelector('.menu-item-vertical');
+      showView('calendar', calBtn);
+    }
+  });
+}
+
+function toggleCustomMenu(key, enabled) {
+  if (!S.customMenus) S.customMenus = { komutrotasi: false, teacher: false, books: false };
+  S.customMenus[key] = !!enabled;
+  save();
+  applyCustomMenusUI();
+  renderSettings();
+  toast(enabled ? 'Modül menüye eklendi 👁️' : 'Modül menüden kaldırıldı 🙈', 's');
+}
+
+function updateCustomMenuName(key, newName) {
+  if (!S.customMenuNames) S.customMenuNames = { komutrotasi: '🌐 Komut Rotası', teacher: '🏫 Bilişimci Hocam', finance: '💰 Finans & Bütçe', books: '📚 Kitaplık' };
+  const trimmed = (newName || '').trim();
+  if (trimmed) {
+    S.customMenuNames[key] = trimmed;
+    save();
+    applyCustomMenusUI();
+    toast('Menü ismi güncellendi: ' + trimmed, 's');
+  }
 }
 function openCatManager() {
   editCatKey = null; renderColorPresets(); renderCatList(); resetCatForm();
-  document.getElementById('catModal').classList.add('on');
+  document.getElementById('catModal')?.classList.add('on');
 }
 function renderColorPresets() {
-  document.getElementById('colorPresets').innerHTML = COLOR_PALETTE.map((c, i) =>
-    `<div class="color-preset${selectedColor.hex === c.hex ? ' sel' : ''}" style="background:${c.hex}" onclick="selectColor(${i})" title="${c.hex}"></div>`
-  ).join('');
+  const el = document.getElementById('colorPresets');
+  if (el) {
+    el.innerHTML = COLOR_PALETTE.map((c, i) =>
+      `<div class="color-preset${selectedColor.hex === c.hex ? ' sel' : ''}" style="background:${c.hex}" onclick="selectColor(${i})" title="${c.hex}"></div>`
+    ).join('');
+  }
 }
 function selectColor(i) { selectedColor = COLOR_PALETTE[i]; renderColorPresets(); }
 function renderCatList() {
-  document.getElementById('catList').innerHTML = Object.entries(CATS).map(([k, c]) => `
+  const el = document.getElementById('catList');
+  if (el) {
+    el.innerHTML = Object.entries(CATS).map(([k, c]) => `
     <div class="cat-item">
       <div class="cat-item-ico">${esc(c.i)}</div>
       <div style="width:11px;height:11px;border-radius:3px;background:${safeColor(c.c)};flex-shrink:0;border:2px solid var(--bd)"></div>
@@ -1531,25 +2485,29 @@ function renderCatList() {
         ${Object.keys(CATS).length > 1 ? `<button class="cat-act-btn del" onclick="deleteCat('${k}')" title="Sil">🗑️</button>` : ''}
       </div>
     </div>`
-  ).join('');
+    ).join('');
+  }
 }
 function editCat(key) {
   editCatKey = key;
   const c = CATS[key];
-  document.getElementById('catIco').value = c.i;
-  document.getElementById('catName').value = c.l;
-  document.getElementById('catKey').value = key;
-  document.getElementById('catKey').disabled = true;
-  document.getElementById('catFormTitle').textContent = 'Kategori Düzenle: ' + c.l;
+  if (!c) return;
+  const ico = document.getElementById('catIco'); if (ico) ico.value = c.i;
+  const name = document.getElementById('catName'); if (name) name.value = c.l;
+  const keyEl = document.getElementById('catKey');
+  if (keyEl) { keyEl.value = key; keyEl.disabled = true; }
+  const title = document.getElementById('catFormTitle'); if (title) title.textContent = 'Kategori Düzenle: ' + c.l;
   const idx = COLOR_PALETTE.findIndex(p => p.hex === c.c);
   selectedColor = idx >= 0 ? COLOR_PALETTE[idx] : { hex: c.c, bg: c.bg };
   renderColorPresets();
 }
 function resetCatForm() {
   editCatKey = null;
-  ['catIco', 'catName', 'catKey'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('catKey').disabled = false;
-  document.getElementById('catFormTitle').textContent = 'Yeni Kategori Ekle';
+  ['catIco', 'catName', 'catKey'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  const keyEl = document.getElementById('catKey'); if (keyEl) keyEl.disabled = false;
+  const title = document.getElementById('catFormTitle'); if (title) title.textContent = 'Yeni Kategori Ekle';
   selectedColor = COLOR_PALETTE[0]; renderColorPresets();
 }
 function saveCat() {
@@ -2240,12 +3198,10 @@ window.moveTimelineSector = function (event) {
   pop.style.top = top + 'px';
 };
 
-function renderCatCards() {
-  const el = document.getElementById('catCards');
-  if (!el) return;
-}
+/* renderCatCards: Tam tanım satır ~2565'te. Duplikat boş gövde kaldırıldı. */
 
-function renderDayProg() {
+/* renderDayProg: Görev ilerleme rendera - tam tanım satır ~2598'de */
+function renderNamazProg() {
   const fill = document.getElementById('ibadetBar');
   const msg = document.getElementById('ibadetMsg');
   const cnt = document.getElementById('namazCnt');
@@ -2267,11 +3223,11 @@ function renderEsma() {
     { ar: "الرَّحْمَنُ", tr: "Er-Rahmân", m: "Dünyada tüm yaratıklara sonsuz rahmet eden." }
   ];
 
-  const dayIdx = typeof dayOfYear === 'function' ? dayOfYear() : 0;
-  const idx = dayIdx % list.length;
-  const esma = list[idx] || list[0];
+  // Her gösterimde dönüşümlü ve dinamik gelsin
+  const rIdx = Math.floor(Math.random() * list.length);
+  const esma = list[rIdx] || list[0];
 
-  arEl.innerHTML = `<div style="font-family:'Amiri',serif; font-size:clamp(1.6rem, 2.2vw, 2.4rem); color:var(--gold); line-height:1.3; font-weight:700; text-align:right; direction:rtl;">${esma.ar || ''}</div>`;
+  arEl.innerHTML = `<div style="font-family:var(--font-arabic); font-size:clamp(1.6rem, 2.2vw, 2.4rem); color:var(--gold); line-height:1.3; font-weight:700; text-align:right; direction:rtl;">${esma.ar || ''}</div>`;
   if (trEl) trEl.textContent = esma.tr || '';
   if (meanEl) meanEl.textContent = esma.m ? `"${esma.m}"` : '';
 }
@@ -2285,13 +3241,14 @@ function renderDailyZikir() {
     { ar: "يَا أَيُّهَا الَّذِينَ آمَنُوا اذْكُرُوا اللَّهَ ذِكْرًا كَثِيرًا", tr: "Ahzâb 33/41", m: "Ey iman edenler! Allah'ı çokça zikredin." }
   ];
 
-  const dayIdx = typeof dayOfYear === 'function' ? dayOfYear() : 0;
-  const ayet = list[dayIdx % list.length] || list[0];
+  // Her gösterimde dönüşümlü ve dinamik gelsin
+  const rIdx = Math.floor(Math.random() * list.length);
+  const ayet = list[rIdx] || list[0];
 
   if (labelEl) labelEl.textContent = ayet.tr || 'Ayet-i Kerime';
 
   textEl.innerHTML = `
-    <div style="font-family:'Amiri',serif; font-size:clamp(1.4rem, 1.8vw, 2.1rem); color:var(--teal); line-height:1.4; direction:rtl; text-align:right; font-weight:700; margin-bottom:4px;">${ayet.ar}</div>
+    <div style="font-family:var(--font-arabic); font-size:clamp(1.4rem, 1.8vw, 2.1rem); color:var(--teal); line-height:1.4; direction:rtl; text-align:right; font-weight:700; margin-bottom:4px;">${ayet.ar}</div>
     <div style="font-size:0.88rem; color:var(--tx2); font-style:italic; text-align:left; line-height:1.4;">"${ayet.m}"</div>
   `;
 }
@@ -2399,7 +3356,7 @@ function renderTesbihatTab(tab = currentTesbihatTab) {
       </div>
       <div style="margin-top:10px; padding:10px; background:rgba(212,175,55,0.06); border:1px solid rgba(212,175,55,0.2); border-radius:10px; font-size:0.78rem; color:var(--tx2);">
         <span style="color:var(--gold); font-weight:800;">🤲 Bitiriş Duası (Kelime-i Tevhid):</span> <br>
-        <span style="font-family:'Amiri',serif; font-size:1.1rem; color:var(--gold);">لَا إِلَٰهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَىٰ كُلِّ شَيْءٍ قَدِيرٌ</span><br>
+        <span style="font-family:var(--font-arabic); font-size:1.1rem; color:var(--gold);">لَا إِلَٰهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَىٰ كُلِّ شَيْءٍ قَدِيرٌ</span><br>
         <em>"Allah'tan başka ilah yoktur, O tektir, ortağı yoktur. Mülk O'nundur, hamd O'nadır."</em>
       </div>
     `;
@@ -2686,16 +3643,16 @@ function renderZikirView() {
     }
 
     let progressHeader = `
-      <div style="grid-column:1/-1; background:var(--sf2); border:1px solid var(--bd); border-radius:14px; padding:14px 18px; margin-bottom:4px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
-          <div style="font-weight:800; font-size:0.92rem; color:var(--gold); display:flex; align-items:center; gap:8px;">
+      <div style="grid-column:1/-1; background:var(--sf2); border:1px solid var(--bd); border-radius:14px; padding:12px 14px; margin-bottom:4px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+          <div style="font-weight:800; font-size:0.90rem; color:var(--gold); display:flex; align-items:center; gap:8px;">
             <span>🧠 Esmâ-ül Hüsna Ezber Takibi</span>
-            <span style="font-size:0.8rem; font-weight:700; color:var(--teal); background:rgba(62,207,176,0.12); padding:2px 10px; border-radius:12px; font-family:'JetBrains Mono',monospace;">${memorizedCount} / ${totalEsma} (%${pct})</span>
+            <span style="font-size:0.78rem; font-weight:700; color:var(--teal); background:rgba(62,207,176,0.12); padding:2px 8px; border-radius:12px; font-family:'JetBrains Mono',monospace;">${memorizedCount} / ${totalEsma} (%${pct})</span>
           </div>
-          <div style="display:flex; gap:6px; flex-wrap:wrap;">
-            <button onclick="switchEsmaSubFilter('all')" class="fchip ${activeEsmaSubFilter === 'all' ? 'on' : ''}" style="font-size:0.75rem; padding:4px 10px; border-radius:12px;">📜 Tümü (${totalEsma})</button>
-            <button onclick="switchEsmaSubFilter('memorized')" class="fchip ${activeEsmaSubFilter === 'memorized' ? 'on' : ''}" style="font-size:0.75rem; padding:4px 10px; border-radius:12px;">🧠 Ezberlenen (${memorizedCount})</button>
-            <button onclick="switchEsmaSubFilter('pending')" class="fchip ${activeEsmaSubFilter === 'pending' ? 'on' : ''}" style="font-size:0.75rem; padding:4px 10px; border-radius:12px;">⏳ Ezberlenecek (${totalEsma - memorizedCount})</button>
+          <div class="esma-filter-row" style="display:flex !important; flex-direction:row !important; flex-wrap:nowrap !important; gap:4px !important; width:100% !important; margin-top:4px !important;">
+            <button onclick="switchEsmaSubFilter('all')" class="fchip ${activeEsmaSubFilter === 'all' ? 'on' : ''}" style="flex:1 1 0px !important; width:auto !important; min-width:0 !important; white-space:nowrap !important; font-size:0.72rem !important; padding:6px 4px !important; border-radius:10px !important; text-align:center !important; display:inline-flex !important; justify-content:center !important; align-items:center !important;">📜 Tümü (${totalEsma})</button>
+            <button onclick="switchEsmaSubFilter('memorized')" class="fchip ${activeEsmaSubFilter === 'memorized' ? 'on' : ''}" style="flex:1 1 0px !important; width:auto !important; min-width:0 !important; white-space:nowrap !important; font-size:0.72rem !important; padding:6px 4px !important; border-radius:10px !important; text-align:center !important; display:inline-flex !important; justify-content:center !important; align-items:center !important;">🧠 Ezberlenen (${memorizedCount})</button>
+            <button onclick="switchEsmaSubFilter('pending')" class="fchip ${activeEsmaSubFilter === 'pending' ? 'on' : ''}" style="flex:1 1 0px !important; width:auto !important; min-width:0 !important; white-space:nowrap !important; font-size:0.72rem !important; padding:6px 4px !important; border-radius:10px !important; text-align:center !important; display:inline-flex !important; justify-content:center !important; align-items:center !important;">⏳ Ezberlenecek (${totalEsma - memorizedCount})</button>
           </div>
         </div>
         <div style="width:100%; height:8px; background:var(--sf3); border-radius:4px; overflow:hidden;">
@@ -2717,7 +3674,7 @@ function renderZikirView() {
           <button onclick="toggleEsmaMemorized(${e.origIdx})" title="${isMem ? 'Ezberlendi (İşareti kaldır)' : 'Ezberle'}" style="position:absolute; top:6px; right:8px; border:none; background:none; cursor:pointer; font-size:1.1rem; padding:2px; line-height:1; user-select:none;">
             ${isMem ? '✅' : '⚪'}
           </button>
-          <div style="font-family:'Amiri',serif; font-size:1.8rem; color:${isMem ? 'var(--grn)' : 'var(--gold)'}; font-weight:700; margin-top:8px; margin-bottom:4px; text-align:center; direction:rtl;">${esc(e.ar || '')}</div>
+          <div style="font-family:var(--font-arabic); font-size:1.8rem; color:${isMem ? 'var(--grn)' : 'var(--gold)'}; font-weight:700; margin-top:8px; margin-bottom:4px; text-align:center; direction:rtl;">${esc(e.ar || '')}</div>
           <div style="font-weight:800; color:var(--teal); font-size:0.95rem; margin-bottom:4px; text-align:center;">${esc(e.tr || '')}</div>
           <div style="font-size:0.78rem; color:var(--tx2); font-style:italic; text-align:center; line-height:1.3; margin-bottom:10px;">${esc(e.m || '')}</div>
           <button onclick="toggleEsmaMemorized(${e.origIdx})" style="margin-top:auto; padding:5px 12px; border-radius:10px; border:1px solid ${isMem ? 'var(--grn)' : 'var(--bd)'}; background:${isMem ? 'var(--grnbg)' : 'var(--sf3)'}; color:${isMem ? 'var(--grn)' : 'var(--tx2)'}; font-size:0.75rem; font-weight:700; cursor:pointer; width:100%; transition:all 0.2s ease;">
@@ -2754,7 +3711,7 @@ function renderZikirView() {
               ${z.m ? `<div class="zikir-card-meaning" style="font-size:0.85rem; color:var(--tx2); font-style:italic; text-align:left;">${esc(z.m)}</div>` : ''}
             </div>
           </div>
-          <div class="zikir-card-ar" style="font-family:'Amiri',serif; font-size:1.4rem; color:var(--gold); font-weight:700; direction:rtl; text-align:right;">${esc(z.ar || '')}</div>
+          <div class="zikir-card-ar" style="font-family:var(--font-arabic); font-size:1.4rem; color:var(--gold); font-weight:700; direction:rtl; text-align:right;">${esc(z.ar || '')}</div>
         </div>
         <div class="zikir-card-foot" style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; padding-top:8px; border-top:1px dashed var(--bd);">
           <span class="zikir-count-pill" style="padding:4px 12px; border-radius:20px; font-size:0.8rem; font-weight:700; background:var(--grnbg); color:var(--grn);">✅ Tamamlandı (${z.cnt}/${z.target})</span>
@@ -2790,7 +3747,7 @@ function renderZikirView() {
               ${z.m ? `<div class="zikir-card-meaning" style="font-size:0.85rem; color:var(--tx2); font-style:italic; text-align:left;">${esc(z.m)}</div>` : ''}
             </div>
           </div>
-          <div class="zikir-card-ar" style="font-family:'Amiri',serif; font-size:1.4rem; color:var(--gold); font-weight:700; direction:rtl; text-align:right;">${esc(z.ar || '')}</div>
+          <div class="zikir-card-ar" style="font-family:var(--font-arabic); font-size:1.4rem; color:var(--gold); font-weight:700; direction:rtl; text-align:right;">${esc(z.ar || '')}</div>
         </div>
         <div class="zikir-card-foot" style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; padding-top:8px; border-top:1px dashed var(--bd);">
           <span class="zikir-count-pill" style="padding:4px 12px; border-radius:20px; font-size:0.8rem; font-weight:700; background:rgba(62,207,176,0.1); color:var(--teal);">🎯 Hedef: ${z.target}x ${z.cnt > 0 ? `(${z.cnt}/${z.target})` : ''}</span>
@@ -2830,12 +3787,7 @@ function renderWeeklyIbadet() {
 }
 
 /* ── RENDER: ÜST HEADER CANLI İSTATİSTİK BAR-I ── */
-function isTaskForToday(t) {
-  if (!t) return false;
-  const td = typeof today === 'function' ? today() : new Date().toISOString().slice(0, 10);
-  if (t.due) return t.due === td;
-  return true;
-}
+/* isTaskForToday: Tam (detaylı) tanım satır ~1177'de. Basitleştirilmiş duplikat kaldırıldı. */
 
 function getNextPrayerTimeStr() {
   if (!PRAYERS || PRAYERS.length !== 5) return '';
@@ -3117,32 +4069,43 @@ function renderWeeklyQuranAnalysis() {
   }
 }
 
-/* ── RENDER: ALIŞKANLIKLAR ── */
+/* ── RENDER: ALIŞKANLIKLAR (PAZARTESİDEN BAŞLAYAN HAFTALIK GÖRÜNÜM) ── */
 function renderHabits() {
   const dnames = ['Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct', 'Pz'];
   const containers = document.querySelectorAll('.habits-view-list');
   if (!containers.length) return;
+
+  // Mevcut haftanın Pazartesi gününü hesapla
+  const now = new Date();
+  const dayOfWeek = now.getDay(); // 0: Pazar, 1: Pazartesi, ... 6: Cumartesi
+  const distToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - distToMonday);
+
+  const todayStr = today();
+
   const html = HABITS.map((h, idx) => {
     const str = streak(h.id);
     const dots = Array.from({ length: 7 }, (_, i) => {
-      const ds = dOff(6 - i);
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       const isDone = !!(S.habits[ds]?.[h.id]);
-      const isT = i === 6;
-      const d = new Date(); d.setDate(d.getDate() - (6 - i));
-      const dn = dnames[d.getDay() === 0 ? 6 : d.getDay() - 1];
+      const isT = ds === todayStr;
+      const dn = dnames[i];
       return `<div class="habit-day-wrap">
-        <div class="hdot${isDone ? ' done' : ''}${isT ? ' today' : ''}" onclick="toggleHabit('${h.id}','${ds}')" title="${ds}">${isDone ? '✓' : ''}</div>
+        <div class="hdot${isDone ? ' done' : ''}${isT ? ' today' : ''}" onclick="toggleHabit('${h.id}','${ds}')" title="${dn} ${ds}">${isDone ? '✓' : ''}</div>
         <div class="habit-day-name">${dn}</div>
       </div>`;
     }).join('');
     return `<div class="hrow">
       <div class="htop">
-        <div class="hnm">${esc(h.l)}</div>
+        <div class="hnm">${esc(h.l || h.title || h.name || h.label)}</div>
         <div style="display:flex;align-items:center;gap:5px">
           <div class="hstr">🔥${str}</div>
           <div class="habit-actions">
-            <button class="habit-btn" onclick="editHabitPrompt(${idx})" title="Düzenle">✎</button>
-            <button class="habit-btn" onclick="deleteHabit(${idx})" title="Sil">×</button>
+            <button class="habit-btn" onclick="editHabitPrompt(${idx})" title="Düzenle">✏️</button>
+            <button class="habit-btn habit-btn-del" onclick="deleteHabit(${idx})" title="Sil">🗑️</button>
           </div>
         </div>
       </div>
@@ -3155,25 +4118,26 @@ function renderHabits() {
 /* ── ALIÞKANLIK MODAL ── */
 function addHabitPrompt() {
   _habitEditIdx = -1;
-  document.getElementById('habitModalTitle').textContent = '✨ Yeni Alışkanlık';
-  document.getElementById('habitModalSub').textContent = 'Başına emoji ekleyebilirsiniz';
-  document.getElementById('habitModalInp').value = '';
-  document.getElementById('habitModal').classList.add('on');
-  setTimeout(() => document.getElementById('habitModalInp').focus(), 80);
+  const title = document.getElementById('habitModalTitle'); if (title) title.textContent = '✨ Yeni Alışkanlık';
+  const sub = document.getElementById('habitModalSub'); if (sub) sub.textContent = 'Başına emoji ekleyebilirsiniz';
+  const inp = document.getElementById('habitModalInp'); if (inp) inp.value = '';
+  document.getElementById('habitModal')?.classList.add('on');
+  setTimeout(() => document.getElementById('habitModalInp')?.focus(), 80);
 }
 function editHabitPrompt(idx) {
   const h = HABITS[idx]; if (!h) return;
   _habitEditIdx = idx;
-  document.getElementById('habitModalTitle').textContent = '✏️ Alışkanlık Düzenle';
-  document.getElementById('habitModalSub').textContent = 'Adı güncelleyip kaydedin';
-  document.getElementById('habitModalInp').value = h.l;
-  document.getElementById('habitModal').classList.add('on');
-  setTimeout(() => { const inp = document.getElementById('habitModalInp'); inp.focus(); inp.select(); }, 80);
+  const title = document.getElementById('habitModalTitle'); if (title) title.textContent = '✏️ Alışkanlık Düzenle';
+  const sub = document.getElementById('habitModalSub'); if (sub) sub.textContent = 'Adı güncelleyip kaydedin';
+  const inp = document.getElementById('habitModalInp'); if (inp) inp.value = h.l;
+  document.getElementById('habitModal')?.classList.add('on');
+  setTimeout(() => { const inp = document.getElementById('habitModalInp'); if (inp) { inp.focus(); inp.select(); } }, 80);
 }
 function saveHabitModal() {
-  const label = document.getElementById('habitModalInp').value.trim();
-  if (!label) { document.getElementById('habitModalInp').style.borderColor = 'var(--rose)'; return; }
-  document.getElementById('habitModalInp').style.borderColor = '';
+  const inp = document.getElementById('habitModalInp');
+  const label = (inp?.value || '').trim();
+  if (!label) { if (inp) inp.style.borderColor = 'var(--rose)'; return; }
+  if (inp) inp.style.borderColor = '';
   if (_habitEditIdx === -1) {
     HABITS.push({ id: 'h_' + gid(), l: label });
     toast('Alışkanlık eklendi', 's');
@@ -3185,49 +4149,28 @@ function saveHabitModal() {
   save(); renderHabits(); closeHabitModal();
 }
 function closeHabitModal() {
-  document.getElementById('habitModal').classList.remove('on');
-  document.getElementById('habitModalInp').style.borderColor = '';
+  document.getElementById('habitModal')?.classList.remove('on');
+  const inp = document.getElementById('habitModalInp'); if (inp) inp.style.borderColor = '';
   _habitEditIdx = null;
 }
 function deleteHabit(idx) {
   const h = HABITS[idx]; if (!h) return;
-  document.getElementById('habitDelTxt').textContent = `"${h.l}" alışkanlığı silinsin mi?`;
-  document.getElementById('habitDelOk').onclick = () => {
-    HABITS.splice(idx, 1); save(); renderHabits();
-    closeModal('habitDelModal'); toast('Alışkanlık silindi', 'i');
-  };
-  document.getElementById('habitDelModal').classList.add('on');
+  const txt = document.getElementById('habitDelTxt'); if (txt) txt.textContent = `"${h.l}" alışkanlığı silinsin mi?`;
+  const okBtn = document.getElementById('habitDelOk');
+  if (okBtn) {
+    okBtn.onclick = () => {
+      HABITS.splice(idx, 1); save(); renderHabits();
+      closeModal('habitDelModal'); toast('Alışkanlık silindi', 'i');
+    };
+  }
+  document.getElementById('habitDelModal')?.classList.add('on');
 }
 
-/* ── RENDER: KATEGORİ SÜRELERİ ── */
-function renderCatTimes() {
-  const d = today(), ct = S.catTime[d] || {};
-  document.getElementById('catTimes').innerHTML = Object.entries(CATS).map(([k, c]) =>
-    `<div class="ctrow">
-      <div class="ct-ico">${esc(c.i)}</div>
-      <div class="ct-nm" style="color:${safeColor(c.c)}">${esc(c.l)}</div>
-      <div class="ct-v">${ct[k] ? fmtSec(ct[k]) : '—'}</div>
-    </div>`
-  ).join('');
-}
+/* renderCatTimes: Gelişmiş UI tanımı satır ~2072'de. Basit duplikat kaldırıldı. */
 
 /* ── RENDER: GÖREVLER ── */
 
-function updatePgHdr() {
-  const c = activeCat ? CATS[activeCat] : null;
-  document.getElementById('pgTitle').textContent = c ? `${c.i} ${c.l}` : '🗂️ Tüm Görevler';
-  const pend = S.tasks.filter(t => (activeCat ? t.cat === activeCat : true) && !t.done).length;
-  document.getElementById('pgSub').textContent = c ? `${pend} bekleyen görev` : 'Tüm kategoriler';
-}
-function subStats(t) {
-  const arr = Array.isArray(t.subs) ? t.subs : [];
-  const done = arr.filter(s => s?.done).length;
-  return { done, total: arr.length, full: arr.length > 0 && done === arr.length };
-}
-function toggleTaskExpand(id) {
-  expandedTasks.has(id) ? expandedTasks.delete(id) : expandedTasks.add(id);
-  renderTasks();
-}
+/* updatePgHdr, subStats, toggleTaskExpand: Gelişmiş tanımlar satır ~4470-4497'de. Basit duplikatlar kaldırıldı. */
 let selectedTaskIds = new Set();
 let isSelectMode = false;
 let currentVisibleTasks = [];
@@ -3406,7 +4349,7 @@ function openBatchAddModal() {
       if (cntEl) cntEl.textContent = `${lines.length} görev algılandı`;
     };
   }
-  document.getElementById('batchTaskModal').classList.add('on');
+  document.getElementById('batchTaskModal')?.classList.add('on');
   setTimeout(() => document.getElementById('batchTasksInput')?.focus(), 100);
 }
 
@@ -3469,19 +4412,36 @@ function submitBatchAdd() {
 
 /* ── RENDER: GÖREVLER ── */
 function toggleTaskActionsMenu(e) {
-  if (e) e.stopPropagation();
+  if (e) {
+    if (typeof e.stopPropagation === 'function') e.stopPropagation();
+    if (typeof e.preventDefault === 'function') e.preventDefault();
+  }
   const menu = document.getElementById('tasksActionsMenu');
-  if (menu) menu.classList.toggle('on');
+  if (menu) {
+    menu.classList.toggle('on');
+  }
 }
 
 function toggleTaskFocusPanel() {
   const panel = document.getElementById('tasksFocusPanel');
   const btn = document.getElementById('btnFocusPanelToggle');
+  const habitsPanel = document.getElementById('tasksHabitsPanel');
+  const habitsBtn = document.getElementById('btnHabitsPanelToggle');
+
   if (!panel) return;
-  const isHidden = panel.style.display === 'none' || !panel.style.display;
-  panel.style.display = isHidden ? 'grid' : 'none';
-  if (btn) btn.classList.toggle('on', isHidden);
-  if (isHidden) {
+  const isOpening = panel.style.display === 'none' || !panel.style.display;
+
+  if (isOpening && habitsPanel) {
+    habitsPanel.style.display = 'none';
+    if (habitsBtn) habitsBtn.classList.remove('on');
+  }
+
+  panel.style.display = isOpening ? 'grid' : 'none';
+  if (btn) {
+    btn.classList.toggle('on', isOpening);
+    try { btn.blur(); } catch (e) {}
+  }
+  if (isOpening) {
     renderSessions();
     renderCatTimes();
     drawTimer();
@@ -3491,11 +4451,23 @@ function toggleTaskFocusPanel() {
 function toggleTaskHabitsPanel() {
   const panel = document.getElementById('tasksHabitsPanel');
   const btn = document.getElementById('btnHabitsPanelToggle');
+  const focusPanel = document.getElementById('tasksFocusPanel');
+  const focusBtn = document.getElementById('btnFocusPanelToggle');
+
   if (!panel) return;
-  const isHidden = panel.style.display === 'none' || !panel.style.display;
-  panel.style.display = isHidden ? 'block' : 'none';
-  if (btn) btn.classList.toggle('on', isHidden);
-  if (isHidden) {
+  const isOpening = panel.style.display === 'none' || !panel.style.display;
+
+  if (isOpening && focusPanel) {
+    focusPanel.style.display = 'none';
+    if (focusBtn) focusBtn.classList.remove('on');
+  }
+
+  panel.style.display = isOpening ? 'block' : 'none';
+  if (btn) {
+    btn.classList.toggle('on', isOpening);
+    try { btn.blur(); } catch (e) {}
+  }
+  if (isOpening) {
     renderHabits();
   }
 }
@@ -3509,9 +4481,11 @@ window.addEventListener('click', function (e) {
 
 function updatePgHdr() {
   const c = activeCat ? CATS[activeCat] : null;
-  document.getElementById('pgTitle').textContent = c ? `${c.i} ${c.l}` : '🗂️ Tüm Görevler';
+  const pgTitle = document.getElementById('pgTitle');
+  if (pgTitle) pgTitle.textContent = c ? `${c.i} ${c.l}` : '🗂️ Tüm Görevler';
   const pend = S.tasks.filter(t => (activeCat ? t.cat === activeCat : true) && !t.done).length;
-  document.getElementById('pgSub').textContent = c ? `${pend} bekleyen görev` : 'Bekleyen ve tamamlanan görevlerinizi yönetin';
+  const pgSub = document.getElementById('pgSub');
+  if (pgSub) pgSub.textContent = c ? `${pend} bekleyen görev` : 'Bekleyen ve tamamlanan görevlerinizi yönetin';
 
   // Günlük Görev İlerleme Barı Hesaplama (Sadece Bugüne Ait Görevler)
   const todayTasks = S.tasks.filter(t => (activeCat ? t.cat === activeCat : true) && isTaskForToday(t));
@@ -3599,6 +4573,7 @@ function renderTasks() {
   const cAll = baseTasks.length;
   const cPend = baseTasks.filter(t => !t.done).length;
   const cToday = baseTasks.filter(isTaskDueToday).length;
+  const cTomorrow = baseTasks.filter(isTaskDueTomorrow).length;
   const cDone = baseTasks.filter(t => t.done).length;
   const cOverdue = baseTasks.filter(t => t.due && !t.done && t.due < td).length;
   const cSel = selectedTaskIds.size;
@@ -3607,12 +4582,13 @@ function renderTasks() {
   setCnt('cnt-all', cAll);
   setCnt('cnt-pending', cPend);
   setCnt('cnt-today', cToday);
+  setCnt('cnt-tomorrow', cTomorrow);
   setCnt('cnt-done', cDone);
   setCnt('cnt-overdue', cOverdue);
   setCnt('cnt-selected', cSel);
 
   const overdueBtn = document.getElementById('fchip-overdue');
-  if (overdueBtn) overdueBtn.style.display = cOverdue > 0 ? 'inline-flex' : 'none';
+  if (overdueBtn) overdueBtn.style.display = 'none';
 
   let tasks = baseTasks.slice();
   const uInp = document.getElementById('unifiedInput') || document.getElementById('searchInp');
@@ -3624,6 +4600,7 @@ function renderTasks() {
   if (statusF === 'pending') tasks = tasks.filter(t => !t.done);
   else if (statusF === 'done') tasks = tasks.filter(t => t.done);
   else if (statusF === 'today') tasks = tasks.filter(isTaskDueToday);
+  else if (statusF === 'tomorrow') tasks = tasks.filter(isTaskDueTomorrow);
   else if (statusF === 'overdue') tasks = tasks.filter(t => t.due && !t.done && t.due < td);
   else if (statusF === 'selected') tasks = tasks.filter(t => selectedTaskIds.has(t.id));
 
@@ -3763,18 +4740,112 @@ const ISLAMIC_HOLY_DAYS = {
 };
 
 function getHijriStr(dateObj) {
+  if (!dateObj || !(dateObj instanceof Date) || isNaN(dateObj.getTime())) return '';
+  const dStr = typeof today === 'function' ? today() : '';
+  const dtFormatted = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
+
+  if (dtFormatted === dStr) {
+    try {
+      const cached = JSON.parse(localStorage.getItem('mikat-hijri-official') || 'null');
+      if (cached && cached.date === dStr && cached.str) return cached.str;
+    } catch (e) { }
+  }
+
+  const GREGORIAN_MONTHS = ['ocak', 'şubat', 'mart', 'nisan', 'mayıs', 'haziran', 'temmuz', 'ağustos', 'eylül', 'ekim', 'kasım', 'aralık'];
+
   try {
-    return new Intl.DateTimeFormat('tr-TR-u-ca-islamic-umalqura', {
+    const parts = new Intl.DateTimeFormat('tr-TR-u-ca-islamic-umalqura', {
       day: 'numeric',
       month: 'long',
       year: 'numeric'
-    }).format(dateObj);
-  } catch (e) {
-    return '';
-  }
+    }).formatToParts(dateObj);
+
+    let day = '', month = '', year = '';
+    for (const p of parts) {
+      if (p.type === 'day') day = p.value;
+      if (p.type === 'month') month = p.value;
+      if (p.type === 'year') year = p.value;
+    }
+
+    const yNum = parseInt(year, 10);
+    const mLower = (month || '').trim().toLowerCase();
+
+    // Safari/WebKit mobil hatası: Yıl 1448 gelse bile ay adı Miladi (Ocak, Temmuz) gelebiliyor.
+    // Eğer gelen ay adı Miladi aylar listesindeyse, Intl çıktısını reddet ve güvenli yedek algoritmayı çalıştır!
+    if (!yNum || yNum > 1800 || yNum < 1300 || !month || !isNaN(month) || GREGORIAN_MONTHS.includes(mLower)) {
+      return getHijriFallback(dateObj);
+    }
+    return `${day} ${month} ${year}`;
+  } catch (e) { }
+
+  return getHijriFallback(dateObj);
 }
 
-function selectCalendarDay(ds) { selectedDate = ds; renderCalendar(); }
+function getHijriFallback(date) {
+  const HIJRI_MONTHS = [
+    'Muharrem', 'Sefer', 'Rebiülevvel', 'Rebiülahir',
+    'Cemaziyelevvel', 'Cemaziyelahir', 'Recep', 'Şaban',
+    'Ramazan', 'Şevval', 'Zilkade', 'Zilhicce'
+  ];
+
+  let day = date.getDate();
+  let month = date.getMonth();
+  let year = date.getFullYear();
+
+  if (month < 2) {
+    year -= 1;
+    month += 12;
+  }
+
+  const a = Math.floor(year / 100);
+  const b = 2 - a + Math.floor(a / 4);
+  const jd = Math.floor(365.25 * (year + 4716)) + Math.floor(30.6001 * (month + 1)) + day + b - 1524;
+
+  let l = jd - 1948440 + 10632;
+  let n = Math.floor((l - 1) / 10631);
+  l = l - 10631 * n + 354;
+  let j = (Math.floor((10985 - l) / 5316)) * (Math.floor((50 * l) / 17719)) + (Math.floor(l / 5670)) * (Math.floor((43 * l) / 15238));
+  l = l - (Math.floor((30 - j) / 15)) * (Math.floor((17719 * j) / 50)) - (Math.floor(j / 16)) * (Math.floor((15238 * j) / 43)) + 29;
+
+  let mH = Math.floor((24 * l) / 709);
+  let dH = Math.floor(l - Math.floor((709 * mH) / 24));
+  let yH = 30 * n + j - 30;
+
+  if (mH < 1 || mH > 12) mH = 1;
+  const monthName = HIJRI_MONTHS[mH - 1] || 'Muharrem';
+
+  return `${dH} ${monthName} ${yH}`;
+}
+
+function selectCalendarDay(ds) {
+  selectedDate = ds;
+  const tooltip = document.getElementById('calTooltip');
+  if (tooltip) tooltip.style.display = 'none';
+  if (window.calTooltipTimeout) clearTimeout(window.calTooltipTimeout);
+  if (window.calLongPressTimer) clearTimeout(window.calLongPressTimer);
+  renderCalendar();
+}
+
+function handleCalendarDayClick(ds, event) {
+  selectCalendarDay(ds);
+}
+
+window.calLongPressTimer = null;
+
+function handleWdayPointerDown(e, ds) {
+  if (window.calLongPressTimer) clearTimeout(window.calLongPressTimer);
+  const target = e.currentTarget;
+  window.calLongPressTimer = setTimeout(() => {
+    showCalTooltip({ currentTarget: target }, ds);
+  }, 350); // 350ms basılı tutunca görevi göster
+}
+
+function handleWdayPointerUp(e) {
+  if (window.calLongPressTimer) {
+    clearTimeout(window.calLongPressTimer);
+    window.calLongPressTimer = null;
+  }
+}
 
 function openDayDetailModal(ds) {
   selectedDate = ds || selectedDate || today();
@@ -3787,8 +4858,10 @@ function openDayDetailModal(ds) {
   const dateStr = dateObj.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' });
   const hijriStr = getHijriStr(dateObj);
 
-  document.getElementById('dayDetailTitle').textContent = `🗓️ ${dateStr}`;
-  document.getElementById('dayDetailSub').textContent = hijriStr ? `🌙 ${hijriStr}` : 'Günün detaylı görev ve ibadet takibi';
+  const dTitle = document.getElementById('dayDetailTitle');
+  if (dTitle) dTitle.textContent = `🗓️ ${dateStr}`;
+  const dSub = document.getElementById('dayDetailSub');
+  if (dSub) dSub.textContent = hijriStr ? `🌙 ${hijriStr}` : 'Günün detaylı görev ve ibadet takibi';
 
   // 1. Görevler Listesi
   const tasks = S.tasks.filter(t => t.due === selectedDate);
@@ -3844,7 +4917,7 @@ function renderCalendar() {
   if (mt) {
     const gregStr = sel.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
     const hijriStr = getHijriStr(sel);
-    mt.innerHTML = `${gregStr} ${hijriStr ? `<span style="font-size:0.80rem; color:var(--gold); font-weight:700; margin-left:8px; font-family:'Amiri', serif;">🌙 ${hijriStr}</span>` : ''}`;
+    mt.innerHTML = `<span>${gregStr}</span>${hijriStr ? `<span style="font-size:0.80rem; color:var(--gold); font-weight:700; font-family:var(--font-arabic);">🌙 ${hijriStr}</span>` : ''}`;
   }
   const heads = dnames.map(d => `<div class="mday-head">${d}</div>`).join('');
   const days = Array.from({ length: 42 }, (_, i) => {
@@ -3876,7 +4949,7 @@ function renderCalendar() {
     }
 
     const hoverAttrs = tasks.length > 0
-      ? ` onmouseenter="showCalTooltip(event, '${ds}')" onmouseleave="hideCalTooltip()"`
+      ? ` onmouseenter="showCalTooltip(event, '${ds}')" onmouseleave="hideCalTooltip()" onpointerdown="handleWdayPointerDown(event, '${ds}')" onpointerup="handleWdayPointerUp(event)" onpointercancel="handleWdayPointerUp(event)"`
       : '';
 
     const holy = ISLAMIC_HOLY_DAYS[ds];
@@ -3885,16 +4958,17 @@ function renderCalendar() {
       : '';
 
     return `<div class="wday${isT ? ' today' : ''}${isSel ? ' sel' : ''}${other ? ' other' : ''}${tasks.length ? ' has-tasks' : ''}${allDone ? ' all-done' : ''}${heatClass}"${hoverAttrs}
-      onclick="selectCalendarDay('${ds}'); openDayDetailModal('${ds}');"
-      ondblclick="selectCalendarDay('${ds}'); openDayDetailModal('${ds}');">
+      onclick="handleCalendarDayClick('${ds}', event)">
       <div class="wday-n">${d.getDate()}</div>
       ${holyBadge}
       <div class="wdots">${dots}</div>
-      ${tasks.length ? `<div class="wday-tasks-count-mobile">${tasks.length} görev</div>` : `<button class="wday-add" onclick="event.stopPropagation();selectCalendarDay('${ds}');openAddForSelectedDay()">+ Ekle</button>`}
+      ${tasks.length ? `<div class="wday-tasks-count-mobile">${tasks.length} görev</div>` : ''}
       ${titleLines}
     </div>`;
   }).join('');
-  document.getElementById('wgrid').innerHTML = heads + days;
+  const wgrid = document.getElementById('wgrid');
+  if (wgrid) wgrid.innerHTML = heads + days;
+  try { updateMobileStats(); } catch(e) {}
 }
 
 window.calTooltipTimeout = null;
@@ -4114,10 +5188,14 @@ function renderAnalytics() {
     { v: focus ? fmtSec(focus) : '0dk', l: 'Bugün Odak', c: 'var(--teal)' },
     { v: `%${monthPct}`, l: 'Bu Ay Verimlilik', c: 'var(--gold)', tr: `${monthDone}/${monthTasks.length} görev` },
   ];
-  document.getElementById('agrid').innerHTML = cards.map(x =>
-    `<div class="acard"><div class="aval" style="color:${x.c}">${x.v}</div><div class="albl">${x.l}</div>${x.tr ? `<div class="atrend">${x.tr}</div>` : ''}</div>`
-  ).join('');
-  document.getElementById('aperf').innerHTML = habitSeriesHtml() + catSeriesHtml();
+  const agrid = document.getElementById('agrid');
+  if (agrid) {
+    agrid.innerHTML = cards.map(x =>
+      `<div class="acard"><div class="aval" style="color:${x.c}">${x.v}</div><div class="albl">${x.l}</div>${x.tr ? `<div class="atrend">${x.tr}</div>` : ''}</div>`
+    ).join('');
+  }
+  const aperf = document.getElementById('aperf');
+  if (aperf) aperf.innerHTML = habitSeriesHtml() + catSeriesHtml();
   renderWeeklyIbadet();
 }
 
@@ -4190,7 +5268,8 @@ function updateDialCountdownAndNeedle() {
     else if (cur >= oS && cur < iS) { targetS = iS; activeName = 'Öğle'; }
     else if (cur >= iS && cur < aS) { targetS = aS; activeName = 'İkindi'; }
     else if (cur >= aS && cur < yS) { targetS = yS; activeName = 'Akşam'; }
-    else { targetS = fS + 86400; activeName = 'Sabah'; }
+    else if (cur >= yS) { targetS = fS + 86400; activeName = 'Yatsı'; }
+    else { targetS = fS; activeName = 'Yatsı'; }
 
     let diff = targetS - cur;
     if (diff < 0) diff += 86400;
@@ -4322,7 +5401,7 @@ function factoryReset() {
   if (inp) inp.value = '';
   const btn = document.getElementById('factoryOkBtn');
   if (btn) { btn.disabled = true; btn.style.opacity = '0.4'; btn.style.cursor = 'not-allowed'; }
-  document.getElementById('factoryModal').classList.add('on');
+  document.getElementById('factoryModal')?.classList.add('on');
   setTimeout(() => inp?.focus(), 80);
 }
 function factoryCheckInput(inp) {
@@ -4334,16 +5413,21 @@ function factoryCheckInput(inp) {
 }
 function doFactoryReset() {
   closeModal('factoryModal');
-  localStorage.removeItem('mikat'); localStorage.removeItem('mikat-v5');
+  localStorage.removeItem('mikat'); localStorage.removeItem('mikat-v5'); localStorage.removeItem('mikat-v6'); localStorage.removeItem('mikat-auto-backup');
   CATS = JSON.parse(JSON.stringify(DEFAULT_CATS));
   HABITS = JSON.parse(JSON.stringify(DEFAULT_HABITS));
   S = {
-    tasks: [], prayers: {}, habits: {}, zikirDone: {}, catTime: {}, timerSess: {},
-    theme: 'dark', cats: null, habitDefs: null, lastReset: '', notifEnabled: false, namazCity: 'Konya',
-    autoBackup: false, lastBackup: '', lat: null, lng: null
+    tasks: [], prayers: {}, habits: {}, zikirDone: {}, zikirCardCounts: {}, catTime: {}, timerSess: {},
+    theme: 'light', cats: null, habitDefs: null, lastReset: '', notifEnabled: false, namazCity: 'Konya',
+    autoBackup: false, lastBackup: '', lat: null, lng: null, books: [], quotes: [], nafile: {},
+    teacherTasks: [], snippets: [], webTools: [], subdomains: [],
+    qada: { sabah: 0, ogle: 0, ikindi: 0, aksam: 0, yatsi: 0, vitir: 0 }, esmaMemorized: {},
+    quran: { surah: 1, surahName: 'Fâtiha', page: 1, ayah: 1, routines: {} },
+    customMenus: { komutrotasi: false, teacher: false, books: false },
+    customMenuNames: { komutrotasi: '🌐 Komut Rotası', teacher: '🏫 Bilişimci Hocam', books: '📚 Kitaplık' }
   };
   selectedDate = today(); activeCat = null; statusF = 'all';
-  applyTheme('dark'); save(); render(); renderSelects();
+  applyTheme('light'); save(); render(); renderSelects();
   toast('Fabrika ayarlarına dönüldü.', 's');
 }
 
@@ -4352,6 +5436,7 @@ function render() {
   try { renderSelects(); } catch (e) { }
   try { renderCatCards(); } catch (e) { }
   try { renderDayProg(); } catch (e) { }
+  try { renderNamazProg(); } catch (e) { }
   try { renderNamaz(); } catch (e) { }
   try { renderCalendar(); } catch (e) { }
   try { renderTasks(); } catch (e) { }
@@ -4364,49 +5449,15 @@ function render() {
   try { renderDailyZikir(); } catch (e) { }
   try { renderAuthCard(); } catch (e) { }
   try { renderHeaderAssistant(); } catch (e) { }
+  try { applyCustomMenusUI(); } catch (e) { }
   if (document.getElementById('v-habits')?.classList.contains('on') || document.getElementById('v-analytics')?.classList.contains('on')) {
     try { renderAnalytics(); } catch (e) { }
   }
 }
 
-/* ── TOHUM VERİSİ ── */
+/* ── TOHUM VERİSİ (DEVREDEN ÇIKARILDI - BAŞLANGIÇTA GÖREVLER BOŞ GELİR) ── */
 function seed() {
-  if (S.tasks.length > 0) return;
-  const defs = [
-    { name: 'Sabah namazını kıl', cat: 'dini', pri: 'yuksek', rep: 'gunluk', tag: 'namaz' },
-    { name: 'Öğle namazını kıl', cat: 'dini', pri: 'yuksek', rep: 'gunluk', tag: 'namaz' },
-    { name: 'İkindi namazını kıl', cat: 'dini', pri: 'yuksek', rep: 'gunluk', tag: 'namaz' },
-    { name: 'Akşam namazını kıl', cat: 'dini', pri: 'yuksek', rep: 'gunluk', tag: 'namaz' },
-    { name: 'Yatsı namazını kıl', cat: 'dini', pri: 'yuksek', rep: 'gunluk', tag: 'namaz' },
-    // H-09: repDays:[5] = Cuma (0=Pazar,...,5=Cuma,6=Cumartesi)
-    { name: 'Cuma namazına git', cat: 'dini', pri: 'yuksek', rep: 'haftalik', repDays: [5], tag: 'namaz' },
-    { name: 'Sabah sünnetini kıl', cat: 'dini', pri: 'orta', rep: 'gunluk' },
-    { name: 'Kuran tilâveti (min 1 sayfa)', cat: 'kuran', pri: 'yuksek', rep: 'gunluk', est: '15', note: 'Mümkünse sesli oku' },
-    { name: 'Sabah zikirleri', cat: 'kuran', pri: 'yuksek', rep: 'gunluk', est: '10' },
-    { name: 'Akşam zikirleri', cat: 'kuran', pri: 'yuksek', rep: 'gunluk', est: '10' },
-    { name: 'Ayetel Kürsi', cat: 'kuran', pri: 'orta', rep: 'gunluk' },
-    { name: 'İhlas-Felak-Nas (3 kez)', cat: 'kuran', pri: 'orta', rep: 'gunluk' },
-    { name: '100 İstiğfar', cat: 'kuran', pri: 'orta', rep: 'gunluk' },
-    { name: 'bilisimcihocam.com kontrol', cat: 'platform', pri: 'yuksek', rep: 'gunluk', est: '15', note: 'Yorum, mesaj, hata' },
-    { name: 'Yeni blog yazısı', cat: 'platform', pri: 'orta', rep: 'haftalik', est: '90' },
-    { name: 'Sosyal medya paylaşımı', cat: 'platform', pri: 'orta', rep: 'gunluk', est: '15' },
-    { name: 'YouTube ders videosu', cat: 'platform', pri: 'orta', rep: 'haftalik', est: '120' },
-    { name: 'Günlük ders planı hazırla', cat: 'okul', pri: 'yuksek', rep: 'gunluk', est: '15' },
-    { name: 'Sınav soruları hazırla', cat: 'okul', pri: 'orta', rep: 'haftalik', est: '60' },
-    { name: 'Öğrenci notları E-okul\'a işle', cat: 'okul', pri: 'orta', rep: 'haftalik', est: '30' },
-    { name: 'Eşinle baş başa konuşma', cat: 'aile', pri: 'yuksek', rep: 'gunluk', est: '20' },
-    { name: 'Çocuklarla oyun / sohbet', cat: 'aile', pri: 'yuksek', rep: 'gunluk', est: '45' },
-    { name: 'Çocukların ödevlerine bak', cat: 'aile', pri: 'yuksek', rep: 'gunluk', est: '30' },
-    { name: 'Anne-babayı ara', cat: 'aile', pri: 'yuksek', rep: 'gunluk', est: '10' },
-    { name: 'Kitap oku (min 20 dk)', cat: 'kitap', pri: 'yuksek', rep: 'gunluk', est: '20' },
-    { name: 'Podcast / sesli kitap', cat: 'kitap', pri: 'orta', rep: 'gunluk', est: '30', note: 'Yürüyüşte' },
-    { name: 'Haftalık öğrendiklerini yaz', cat: 'kitap', pri: 'dusuk', rep: 'haftalik', est: '20' },
-  ];
-  S.tasks = defs.map(d => ({
-    id: gid(), done: false, subs: [], created: new Date().toISOString(), completedAt: null,
-    due: '', note: d.note || '', tag: d.tag || '', est: d.est || '',
-    rep: d.rep || 'yok', repDays: d.repDays || [], pri: d.pri || 'orta', cat: d.cat || 'diger', name: d.name,
-  }));
+  return;
 }
 
 /* ── KEYBOARD KISAYOLLARI ── */
@@ -4426,24 +5477,25 @@ let deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault(); deferredPrompt = e;
   if (!localStorage.getItem('pwaDismissed'))
-    document.getElementById('pwaBanner').classList.add('show');
+    document.getElementById('pwaBanner')?.classList.add('show');
 });
 function pwsInstall() {
   if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt.userChoice.then(() => { deferredPrompt = null; pwaDismiss(); }); }
 }
 function pwaDismiss() {
-  document.getElementById('pwaBanner').classList.remove('show');
+  document.getElementById('pwaBanner')?.classList.remove('show');
   localStorage.setItem('pwaDismissed', '1');
 }
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./service-worker.js').then(reg => {
-    // Service Worker güncellemesi varsa kullanıcıyı bilgilendir
+    reg.update();
     reg.addEventListener('updatefound', () => {
       const newSW = reg.installing;
       if (!newSW) return;
       newSW.addEventListener('statechange', () => {
         if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
-          toast('Yeni sürüm mevcut! Sayfayı yenileyin.', 'i');
+          toast('Güncellendi! Yenileniyor...', 'i');
+          setTimeout(() => location.reload(), 1000);
         }
       });
     });
@@ -4642,7 +5694,7 @@ function updateZikirDisplay() {
     arabicEl.style.direction = 'rtl';
     arabicEl.style.fontSize = '1.65rem';
     arabicEl.style.lineHeight = '1.6';
-    arabicEl.style.fontFamily = "'Amiri', serif";
+    arabicEl.style.fontFamily = "var(--font-arabic)";
   }
   if (trEl) trEl.textContent = phase.t;
 
@@ -4836,31 +5888,7 @@ function resetZikirmatik() {
   updateZikirDisplay();
 }
 
-function updateZikirDisplay() {
-  const countEl = document.getElementById('zmCount');
-  const arabicEl = document.getElementById('zmArabic');
-  const trEl = document.getElementById('zmTr');
-  const ring = document.getElementById('zmRing');
-  const dots = document.querySelectorAll('.zm-phase-dot');
-
-  if (countEl) countEl.textContent = `${zikirCount} / 33`;
-
-  const phase = ZIKIR_PHASES[zikirPhase];
-  if (arabicEl) arabicEl.textContent = phase.a;
-  if (trEl) trEl.textContent = phase.t;
-
-  if (dots.length === 3) {
-    dots.forEach((dot, idx) => {
-      dot.classList.toggle('active', idx === zikirPhase);
-    });
-  }
-
-  if (ring) {
-    const pct = zikirCount / 33;
-    const offset = 376.99 - (pct * 376.99);
-    ring.style.strokeDashoffset = offset;
-  }
-}
+/* updateZikirDisplay: Stil detaylı tanım satır ~5660'ta. Basit duplikat kaldırıldı. */
 
 function tapZikirmatik() {
   if (navigator.vibrate) {
@@ -4968,7 +5996,7 @@ autoReset();
 seed();
 renderSelects();
 renderColorPresets();
-applyTheme(S.theme || 'dark');
+applyTheme(S.theme || 'light');
 updateNotifBtn();
 if (S.notifEnabled && Notification.permission === 'granted') scheduleNotifs();
 save();
@@ -4996,7 +6024,8 @@ setInterval(() => {
         PRAYERS = prayers;
         SUNRISE_TIME = sunrise || null;
         IMSAK_TIME = imsak || null;
-        document.getElementById('namazSource').textContent = '💾 Önbellek — ' + (S.namazCity || 'Konya');
+        const srcEl = document.getElementById('namazSource');
+        if (srcEl) srcEl.textContent = '💾 Önbellek — ' + (S.namazCity || 'Konya');
         renderNamaz();
         renderHeaderPrayerVakit();
         initHeaderAssistant();
@@ -5060,14 +6089,29 @@ function autoDetectAndFetch() {
  */
 async function fetchPrayerTimesWithCoords(lat, lng) {
   try {
-    document.getElementById('namazSource').textContent = '📡 Konuma göre yükleniyor…';
+    const srcElLoading = document.getElementById('namazSource');
+    if (srcElLoading) srcElLoading.textContent = '📡 Konuma göre yükleniyor…';
+    const nowD = new Date();
+    const dateStr = `${String(nowD.getDate()).padStart(2,'0')}-${String(nowD.getMonth()+1).padStart(2,'0')}-${nowD.getFullYear()}`;
     const r = await fetch(
-      `https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lng}&method=13`
+      `https://api.aladhan.com/v1/timings/${dateStr}?latitude=${lat}&longitude=${lng}&method=13`
     );
     if (!r.ok) throw new Error('API hatası');
     const j = await r.json();
     const t = j?.data?.timings;
     if (!t?.Fajr || !t?.Dhuhr) throw new Error('Geçersiz API yanıtı');
+
+    if (j?.data?.date?.hijri) {
+      try {
+        const hObj = j.data.date.hijri;
+        const HIJRI_MONTHS_TR = ['Muharrem', 'Sefer', 'Rebiülevvel', 'Rebiülahir', 'Cemaziyelevvel', 'Cemaziyelahir', 'Recep', 'Şaban', 'Ramazan', 'Şevval', 'Zilkade', 'Zilhicce'];
+        const mNum = parseInt(hObj.month?.number || 1, 10);
+        const mName = HIJRI_MONTHS_TR[mNum - 1] || 'Muharrem';
+        const officialStr = `${parseInt(hObj.day, 10)} ${mName} ${hObj.year}`;
+        localStorage.setItem('mikat-hijri-official', JSON.stringify({ date: today(), str: officialStr }));
+      } catch (e) { }
+    }
+
     SUNRISE_TIME = t.Sunrise ? t.Sunrise.slice(0, 5) : null;
     IMSAK_TIME = t.Imsak ? t.Imsak.slice(0, 5) : null;
     PRAYERS = [
@@ -5077,15 +6121,14 @@ async function fetchPrayerTimesWithCoords(lat, lng) {
       { n: 'Akşam', t: t.Maghrib.slice(0, 5), h: parseInt(t.Maghrib) },
       { n: 'Yatsı', t: t.Isha.slice(0, 5), h: parseInt(t.Isha) },
     ];
-    // Koordinat bazlı cache: city anahtarı olarak özel bir format kullan
-    const coordKey = `${lat.toFixed(3)},${lng.toFixed(3)}`;
     try {
       localStorage.setItem('mikat-prayer-cache', JSON.stringify({
         date: today(), city: S.namazCity || 'Konya',
         prayers: PRAYERS, sunrise: SUNRISE_TIME, imsak: IMSAK_TIME
       }));
     } catch (e) { }
-    document.getElementById('namazSource').textContent = '📍 Konuma göre — ' + (S.namazCity || 'Konya');
+    const srcElDone = document.getElementById('namazSource');
+    if (srcElDone) srcElDone.textContent = '📍 Konuma göre — ' + (S.namazCity || 'Konya');
     renderNamaz();
     renderHeaderPrayerVakit();
     initHeaderAssistant();
@@ -5382,7 +6425,7 @@ function renderQuranRoutines() {
               <div style="font-size:0.78rem; color:var(--gold); font-weight:700; margin-top:2px;">${item.sub}</div>
             </div>
           </div>
-          <button class="tbtn" onclick="startFocusForTask('quran_${item.id}', 30)" style="font-size:0.78rem; padding:6px 14px; border-radius:10px; border:1px solid var(--teal); color:var(--teal); background:rgba(62,207,176,0.1); font-weight:700;" title="30dk Odaklanma Sayacını Başlat">⏱ Odaklan (30dk)</button>
+          <button class="tbtn" onclick="startFocusForTask('quran_${item.id}', 30)" style="font-size:0.68rem; min-height:28px; padding:3px 9px; border-radius:8px; border:1px solid var(--teal); color:var(--teal); background:rgba(62,207,176,0.1); font-weight:700;" title="30dk Odaklanma Sayacını Başlat">⏱ 30dk</button>
         </div>
 
         <!-- YATAY DETAY IZGARASI (Görünür Fazilet & Hikmet) -->
@@ -5496,12 +6539,12 @@ function saveBookmarkModal() {
   toast('Kaldığın yer kaydedildi!', 's');
 }
 
-// Sayfa yüklendiğinde canlı header barı ve haftalık zikir analizini güncelle
+// Sayfa yüklendiğinde canlı header barı, zikir analizi ve maskot hatırlatıcısını başlat
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
-  setTimeout(() => { renderHeaderAssistant(); renderWeeklyZikirAnalysis(); }, 100);
+  setTimeout(() => { renderHeaderAssistant(); renderWeeklyZikirAnalysis(); initMascotReminder(); }, 100);
 } else {
   document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(() => { renderHeaderAssistant(); renderWeeklyZikirAnalysis(); }, 100);
+    setTimeout(() => { renderHeaderAssistant(); renderWeeklyZikirAnalysis(); initMascotReminder(); }, 100);
   });
 }
 
@@ -5535,10 +6578,10 @@ function switchDuaTab(tab, btn) {
 }
 
 function openAddDuaModal() {
-  document.getElementById('duaTitleInp').value = '';
-  document.getElementById('duaArInp').value = '';
-  document.getElementById('duaTrInp').value = '';
-  document.getElementById('addDuaModal').classList.add('on');
+  ['duaTitleInp', 'duaArInp', 'duaTrInp'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('addDuaModal')?.classList.add('on');
 }
 
 function saveCustomDua() {
@@ -5628,11 +6671,29 @@ function renderDuaView() {
   }
 
   if (!filtered.length) {
-    cont.innerHTML = `<div class="empty" style="grid-column:1/-1;"><div class="empty-ico">🤲</div><div class="empty-txt">Dua bulunamadı.</div></div>`;
+    if (activeDuaTab === 'custom') {
+      cont.innerHTML = `
+        <div class="empty" style="grid-column:1/-1; padding:30px 20px; text-align:center;">
+          <div class="empty-ico" style="font-size:2.5rem; margin-bottom:10px;">🤲</div>
+          <div class="empty-txt" style="font-weight:800; font-size:1.1rem; color:var(--tx); margin-bottom:6px;">Henüz Kişisel Dua Eklenmedi</div>
+          <div style="font-size:0.85rem; color:var(--tx2); margin-bottom:16px;">Kendi özel dualarınızı, niyazlarınızı ve dileklerinizi buraya ekleyebilirsiniz.</div>
+          <button class="btn btn-primary" onclick="openAddDuaModal()" style="font-size:0.85rem; padding:8px 18px;">+ İlk Kişisel Duamı Ekle</button>
+        </div>
+      `;
+    } else {
+      cont.innerHTML = `<div class="empty" style="grid-column:1/-1;"><div class="empty-ico">🤲</div><div class="empty-txt">Dua bulunamadı.</div></div>`;
+    }
     return;
   }
 
-  cont.innerHTML = filtered.map(d => {
+  const customHeader = activeDuaTab === 'custom' ? `
+    <div style="display:flex; justify-content:space-between; align-items:center; width:100%; margin-bottom:8px; padding:10px 14px; background:rgba(62,207,176,0.08); border-radius:10px; border:1px solid rgba(62,207,176,0.2);">
+      <span style="font-weight:800; font-size:0.9rem; color:var(--teal);">📝 Kişisel Özel Dualarım (${filtered.length})</span>
+      <button class="btn btn-primary" style="font-size:0.75rem; padding:5px 12px;" onclick="openAddDuaModal()">+ Yeni Özel Dua Ekle</button>
+    </div>
+  ` : '';
+
+  cont.innerHTML = customHeader + filtered.map(d => {
     const isDone = !!todayDone[d.id];
     return `
       <div style="background:var(--sf); border:1.5px solid ${isDone ? 'var(--teal)' : 'var(--bd)'}; border-radius:14px; padding:16px 18px; display:flex; flex-direction:column; gap:10px; width:100%; transition:all 0.2s ease;">
@@ -5651,15 +6712,24 @@ function renderDuaView() {
             <button class="tbtn" onclick="navigator.clipboard.writeText('${esc(d.tr)}'); toast('Dua kopyalandı!', 's');" style="font-size:0.75rem; padding:5px 12px; border-radius:8px; display:inline-flex; align-items:center; gap:4px; white-space:nowrap; flex-shrink:0; cursor:pointer; font-weight:700;">
               📋 Kopyala
             </button>
+            ${d.type === 'custom' ? `<button class="tbtn" onclick="deleteCustomDua('${d.id}')" style="font-size:0.75rem; padding:5px 10px; color:var(--rose); border-radius:8px; cursor:pointer; font-weight:700;" title="Duayı Sil">🗑️ Sil</button>` : ''}
           </div>
         </div>
 
-        ${d.ar ? `<div style="font-family:'Amiri',serif; font-size:1.4rem; color:var(--gold); direction:rtl; text-align:right; line-height:1.6;">${esc(d.ar)}</div>` : ''}
+        ${d.ar ? `<div style="font-family:var(--font-arabic); font-size:1.4rem; color:var(--gold); direction:rtl; text-align:right; line-height:1.6;">${esc(d.ar)}</div>` : ''}
         <div style="font-size:0.88rem; color:var(--tx); line-height:1.45;">${esc(d.tr)}</div>
         ${d.fazilet ? `<div style="font-size:0.75rem; color:var(--tx3); font-style:italic;">✨ ${esc(d.fazilet)}</div>` : ''}
       </div>
     `;
   }).join('');
+}
+
+function deleteCustomDua(id) {
+  if (!S.customDuas) return;
+  S.customDuas = S.customDuas.filter(d => d.id !== id);
+  save();
+  renderDuaView();
+  toast('Kişisel dua silindi.', 'i');
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -5787,24 +6857,24 @@ function renderHadisView() {
   cont.innerHTML = list.map(h => {
     const isMem = !!S.hadisMemorized[h.id];
     return `
-      <div style="background:var(--sf); border:1.5px solid ${isMem ? 'var(--teal)' : 'var(--bd)'}; border-radius:14px; padding:16px 18px; display:flex; flex-direction:column; gap:10px; width:100%;">
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; width:100%;">
-          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; min-width:140px; flex:1;">
-            <span style="font-size:0.75rem; font-weight:800; color:var(--gold); background:rgba(232,184,75,0.12); padding:2px 8px; border-radius:8px; white-space:nowrap;">#Hadis ${h.id}</span>
-            <span style="font-size:0.75rem; font-weight:700; color:var(--teal);">${esc(h.topic)}</span>
+      <div class="hadis-card-item" style="background:var(--sf); border:1.5px solid ${isMem ? 'var(--teal)' : 'var(--bd)'}; border-radius:14px; padding:12px 14px; display:flex; flex-direction:column; gap:10px; width:100%; box-sizing:border-box;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:nowrap; gap:8px; width:100%; box-sizing:border-box;">
+          <div style="display:flex; align-items:center; gap:6px; min-width:0; flex:1 1 auto; overflow:hidden;">
+            <span style="font-size:0.72rem; font-weight:800; color:var(--gold); background:rgba(232,184,75,0.12); padding:3px 8px; border-radius:6px; white-space:nowrap; flex-shrink:0;">#Hadis ${h.id}</span>
+            <span style="font-size:0.75rem; font-weight:700; color:var(--teal); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(h.topic)}</span>
           </div>
           <div style="display:flex; gap:6px; align-items:center; flex-shrink:0; margin-left:auto;">
-            <button class="tbtn" onclick="navigator.clipboard.writeText('${esc(h.tr)} (${esc(h.ref)})'); toast('Hadis kopyalandı!', 's');" style="font-size:0.75rem; padding:4px 10px; border-radius:8px; display:inline-flex; align-items:center; gap:4px; white-space:nowrap; flex-shrink:0; cursor:pointer; font-weight:700;">
+            <button class="hadis-act-btn" onclick="navigator.clipboard.writeText('${esc(h.tr)} (${esc(h.ref)})'); toast('Hadis kopyalandı!', 's');">
               📋 Kopyala
             </button>
-            <button class="tbtn" onclick="toggleHadisMemorized(${h.id})" style="font-size:0.75rem; padding:4px 10px; border-radius:8px; border:1px solid ${isMem ? 'var(--teal)' : 'var(--bd)'}; color:${isMem ? 'var(--teal)' : 'var(--tx2)'}; background:${isMem ? 'rgba(62,207,176,0.12)' : 'transparent'}; font-weight:800; display:inline-flex; align-items:center; gap:4px; white-space:nowrap; flex-shrink:0; cursor:pointer;">
+            <button class="hadis-act-btn ${isMem ? 'mem-on' : ''}" onclick="toggleHadisMemorized(${h.id})">
               ${isMem ? '🧠 Ezberlendi ✓' : '➕ Ezberle'}
             </button>
           </div>
         </div>
-        <div style="font-family:'Amiri',serif; font-size:1.45rem; color:var(--gold); direction:rtl; text-align:right; line-height:1.6;">${esc(h.ar)}</div>
-        <div style="font-size:0.9rem; color:var(--tx); line-height:1.45; font-weight:500;">"${esc(h.tr)}"</div>
-        <div style="font-size:0.72rem; color:var(--tx3); text-align:right;">📖 ${esc(h.ref)}</div>
+        <div style="font-family:var(--font-arabic); font-size:1.40rem; color:var(--gold); direction:rtl; text-align:right; line-height:1.6; word-break:break-word; margin-top:2px;">${esc(h.ar)}</div>
+        <div style="font-size:0.88rem; color:var(--tx); line-height:1.45; font-weight:500; word-break:break-word;">"${esc(h.tr)}"</div>
+        <div style="font-size:0.72rem; color:var(--tx3); text-align:right; font-weight:600;">📖 ${esc(h.ref)}</div>
       </div>
     `;
   }).join('');
@@ -5837,13 +6907,12 @@ function openAddBookModal(bookId = null) {
       if (modalTitle) modalTitle.textContent = '✏️ Kitap Bilgilerini Düzenle';
     }
   } else {
-    document.getElementById('bookTitleInp').value = '';
-    document.getElementById('bookAuthorInp').value = '';
-    document.getElementById('bookTotalPagesInp').value = '';
-    document.getElementById('bookCurrentPageInp').value = '';
+    ['bookTitleInp', 'bookAuthorInp', 'bookTotalPagesInp', 'bookCurrentPageInp'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = '';
+    });
     if (modalTitle) modalTitle.textContent = '📚 Yeni Kitap Ekle';
   }
-  document.getElementById('addBookModal').classList.add('on');
+  document.getElementById('addBookModal')?.classList.add('on');
 }
 
 function saveBookModal() {
@@ -5898,10 +6967,10 @@ function incBookPage(bookId, n) {
 }
 
 function openAddQuoteModal() {
-  document.getElementById('quoteBookInp').value = '';
-  document.getElementById('quoteTextInp').value = '';
-  document.getElementById('quotePageInp').value = '';
-  document.getElementById('addQuoteModal').classList.add('on');
+  ['quoteBookInp', 'quoteTextInp', 'quotePageInp'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('addQuoteModal')?.classList.add('on');
 }
 
 function saveQuoteModal() {
@@ -5931,12 +7000,8 @@ function renderBooksView() {
   const cont = document.getElementById('booksGridContainer');
   if (!cont) return;
 
-  if (!S.books) S.books = [
-    { id: 'b_def1', title: 'Mesnevi-i Şerif', author: 'Mevlânâ Celâleddîn-i Rûmî', totalPages: 450, currentPage: 120, finished: false }
-  ];
-  if (!S.quotes) S.quotes = [
-    { id: 'q_def1', book: 'Mesnevi-i Şerif', text: 'Cümleler doğrudur sen doğru isen, doğruluk bulunmaz sen eğri isen.', page: 45 }
-  ];
+  if (!S.books) S.books = [];
+  if (!S.quotes) S.quotes = [];
 
   if (activeBookTab === 'quotes') {
     if (!S.quotes.length) {
@@ -5944,12 +7009,12 @@ function renderBooksView() {
       return;
     }
     cont.innerHTML = S.quotes.map(q => `
-      <div style="background:var(--sf); border:1px solid var(--bd); border-radius:14px; padding:16px 18px; display:flex; flex-direction:column; gap:8px; width:100%;">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <div style="font-weight:800; font-size:0.82rem; color:var(--gold);">📖 ${esc(q.book)} ${q.page ? `· Sayfa ${q.page}` : ''}</div>
-          <button class="tbtn" onclick="deleteQuote('${q.id}')" style="font-size:0.75rem; padding:4px 10px; color:#ef4444; border-color:rgba(239,68,68,0.3); background:rgba(239,68,68,0.08);">🗑️ Sil</button>
+      <div style="background:var(--sf); border:1px solid var(--bd); border-radius:14px; padding:12px 14px; display:flex; flex-direction:column; gap:8px; width:100%; box-sizing:border-box;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+          <div style="font-weight:800; font-size:0.80rem; color:var(--gold);">📖 ${esc(q.book)} ${q.page ? `· Sayfa ${q.page}` : ''}</div>
+          <button class="book-act-btn del" onclick="deleteQuote('${q.id}')">🗑️ Sil</button>
         </div>
-        <div style="font-size:0.95rem; font-style:italic; color:var(--tx); line-height:1.45;">"${esc(q.text)}"</div>
+        <div style="font-size:0.88rem; font-style:italic; color:var(--tx); line-height:1.4; word-break:break-word;">"${esc(q.text)}"</div>
       </div>
     `).join('');
     return;
@@ -5966,32 +7031,36 @@ function renderBooksView() {
   cont.innerHTML = list.map(b => {
     const pct = Math.round(((b.currentPage || 0) / (b.totalPages || 1)) * 100);
     return `
-      <div style="background:var(--sf); border:1px solid var(--bd); border-radius:14px; padding:18px 20px; display:flex; flex-direction:column; gap:12px; width:100%;">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px;">
-          <div>
-            <div style="font-weight:800; font-size:1.1rem; color:var(--teal);">${esc(b.title)}</div>
-            <div style="font-size:0.8rem; color:var(--tx2); font-style:italic; margin-top:2px;">✍️ ${esc(b.author)}</div>
+      <div class="book-card-item" style="background:var(--sf); border:1.5px solid ${isFin ? 'var(--grn)' : 'var(--bd)'}; border-radius:14px; padding:12px 14px; display:flex; flex-direction:column; gap:10px; width:100%; box-sizing:border-box;">
+        <!-- Kart Üst Başlık & Aksiyonlar -->
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px; width:100%; box-sizing:border-box;">
+          <div style="flex:1 1 170px; min-width:0;">
+            <div style="font-weight:800; font-size:1.05rem; color:var(--teal); line-height:1.2; word-break:break-word;">${esc(b.title)}</div>
+            <div style="font-size:0.78rem; color:var(--tx2); font-style:italic; margin-top:3px;">✍️ ${esc(b.author)}</div>
           </div>
-          <div style="display:flex; gap:6px; align-items:center;">
-            <button class="tbtn" onclick="openAddBookModal('${b.id}')" style="font-size:0.75rem; padding:4px 10px; border-radius:8px;">✏️ Düzenle</button>
-            <button class="tbtn" onclick="deleteBook('${b.id}')" style="font-size:0.75rem; padding:4px 10px; border-radius:8px; color:#ef4444; border-color:rgba(239,68,68,0.3); background:rgba(239,68,68,0.08);">🗑️ Sil</button>
-            <button class="tbtn" onclick="startFocusForTask('book_${b.id}', 30)" style="font-size:0.75rem; padding:4px 10px; border-radius:8px; border:1px solid var(--teal); color:var(--teal); background:rgba(62,207,176,0.1); font-weight:700;">⏱ 30dk Okuma</button>
+          <div style="display:flex; gap:4px; align-items:center; flex-wrap:nowrap; flex-shrink:0; margin-left:auto;">
+            <button class="book-act-btn" onclick="openAddBookModal('${b.id}')" title="Düzenle">✏️ Düzenle</button>
+            <button class="book-act-btn del" onclick="deleteBook('${b.id}')" title="Sil">🗑️ Sil</button>
+            <button class="book-act-btn focus" onclick="startFocusForTask('book_${b.id}', 30)" title="30 Dakika Okuma Sayacı">⏱ 30dk</button>
           </div>
         </div>
 
-        <div style="background:var(--sf2); padding:10px 14px; border-radius:10px; border:1px solid var(--bd);">
-          <div style="display:flex; justify-content:space-between; font-size:0.8rem; font-weight:800; color:var(--tx); margin-bottom:6px;">
+        <!-- Okuma İlerleme Çubuğu -->
+        <div style="background:var(--sf2); padding:8px 12px; border-radius:10px; border:1px solid var(--bd);">
+          <div style="display:flex; justify-content:space-between; font-size:0.78rem; font-weight:800; color:var(--tx); margin-bottom:4px;">
             <span>İlerleme: ${b.currentPage} / ${b.totalPages} Sayfa</span>
-            <span style="color:var(--gold);">%${pct}</span>
+            <span style="color:var(--gold); font-family:'JetBrains Mono',monospace;">%${pct}</span>
           </div>
-          <div style="width:100%; height:6px; background:var(--sf3); border-radius:3px; overflow:hidden;">
+          <div style="width:100%; height:7px; background:var(--sf3); border-radius:4px; overflow:hidden;">
             <div style="width:${pct}%; height:100%; background:linear-gradient(90deg, #3ecfb0, #e8b84b); transition:width 0.3s ease;"></div>
           </div>
         </div>
 
-        <div style="display:flex; gap:8px;">
-          <button class="btn" onclick="incBookPage('${b.id}', 10)" style="flex:1; font-size:0.8rem;">+10 Sayfa</button>
-          <button class="btn btn-primary" onclick="incBookPage('${b.id}', 1)" style="flex:1; font-size:0.8rem;">+1 Sayfa</button>
+        <!-- Hızlı Sayfa İlerleme Butonları -->
+        <div style="display:flex; gap:6px; width:100%;">
+          <button class="book-inc-btn" onclick="incBookPage('${b.id}', 1)" style="flex:1;">+1 Sayfa</button>
+          <button class="book-inc-btn" onclick="incBookPage('${b.id}', 5)" style="flex:1;">+5 Sayfa</button>
+          <button class="book-inc-btn primary" onclick="incBookPage('${b.id}', 10)" style="flex:1;">+10 Sayfa</button>
         </div>
       </div>
     `;
@@ -6004,12 +7073,20 @@ function renderBooksView() {
 let activeKomutTab = 'snippets';
 let _editingSnippetId = null;
 let _editingWebToolId = null;
+let _editingSubdomainId = null;
 
 const DEFAULT_WEB_TOOLS = [
   { id: 'wt1', title: 'Komut Rotası Web Portal', url: 'https://komutrotasi.com', icon: '🌐', note: 'Ana web sitesi ve teknoloji yayınları' },
   { id: 'wt2', title: 'Google Search Console', url: 'https://search.google.com/search-console', icon: '🔍', note: 'İndeks takibi, SEO ve arama performansı' },
   { id: 'wt3', title: 'Google Analytics', url: 'https://analytics.google.com', icon: '📊', note: 'Canlı ziyaretçi trafiği ve analiz raporları' },
   { id: 'wt4', title: 'Google PageSpeed Insights', url: 'https://pagespeed.web.dev', icon: '⚡', note: 'Core Web Vitals ve site hız ölçümü' }
+];
+
+const DEFAULT_SUBDOMAINS = [
+  { id: 'sd1', title: 'Mikat Portal', url: 'https://mikat.komutrotasi.com', icon: '⚡', note: 'Mikat Yönetim Paneli ve Alışkanlık Takibi' },
+  { id: 'sd2', title: 'Kovan Proje Portalı', url: 'https://kovan.komutrotasi.com', icon: '🐝', note: 'Kovan Proje Yönetimi ve İş Takibi' },
+  { id: 'sd3', title: 'Seyir Portalı', url: 'https://seyir.komutrotasi.com', icon: '🚀', note: 'Seyir Modülü ve Gözlem Defteri' },
+  { id: 'sd4', title: 'Lab & Ar-Ge Dizin', url: 'https://lab.komutrotasi.com', icon: '🧪', note: 'Deneysel çalışmalar ve test ortamı' }
 ];
 
 function switchKomutTab(tab, btn) {
@@ -6019,7 +7096,78 @@ function switchKomutTab(tab, btn) {
   renderKomutRotasiView();
 }
 
-function openAddSnippetModal(snipId = null) {
+// 🌐 SUBDOMAIN İŞLEMLERİ
+function openAddSubdomainModal(subId = null) {
+  _editingSubdomainId = subId;
+  const modalTitle = document.querySelector('#addSubdomainModal .modal-title');
+  const allSubs = S.subdomains || [];
+
+  if (subId) {
+    const s = allSubs.find(x => x.id === subId);
+    if (s) {
+      document.getElementById('subdomainTitleInp').value = s.title || '';
+      document.getElementById('subdomainUrlInp').value = s.url || '';
+      document.getElementById('subdomainIconInp').value = s.icon || '🌐';
+      document.getElementById('subdomainNoteInp').value = s.note || '';
+      if (modalTitle) modalTitle.textContent = '✏️ Subdomain Düzenle';
+    }
+  } else {
+    ['subdomainTitleInp', 'subdomainUrlInp', 'subdomainNoteInp'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = '';
+    });
+    const sIco = document.getElementById('subdomainIconInp'); if (sIco) sIco.value = '🌐';
+    if (modalTitle) modalTitle.textContent = '🌐 Yeni Subdomain Ekle';
+  }
+  document.getElementById('addSubdomainModal')?.classList.add('on');
+}
+
+function saveSubdomainModal() {
+  const title = document.getElementById('subdomainTitleInp').value.trim();
+  let url = document.getElementById('subdomainUrlInp').value.trim();
+  const icon = document.getElementById('subdomainIconInp').value;
+  const note = document.getElementById('subdomainNoteInp').value.trim();
+
+  if (!title || !url) { toast('Lütfen subdomain adı ve web adresi (URL) girin.', 'e'); return; }
+
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    url = 'https://' + url;
+  }
+
+  if (!S.subdomains) S.subdomains = [];
+
+  if (_editingSubdomainId) {
+    const s = S.subdomains.find(x => x.id === _editingSubdomainId);
+    if (s) {
+      s.title = title;
+      s.url = url;
+      s.icon = icon;
+      s.note = note;
+    }
+    toast('Subdomain güncellendi! 🌐', 's');
+  } else {
+    S.subdomains.push({ id: 'sd_' + Date.now(), title, url, icon, note });
+    toast('Yeni Subdomain eklendi! 🌐', 's');
+  }
+
+  save();
+  closeModal('addSubdomainModal');
+  _editingSubdomainId = null;
+  activeKomutTab = 'subdomains';
+  renderKomutRotasiView();
+}
+
+function deleteSubdomain(subId) {
+  if (!S.subdomains) S.subdomains = [];
+  const s = S.subdomains.find(x => x.id === subId);
+  if (!s) return;
+  S.subdomains = S.subdomains.filter(x => x.id !== subId);
+  save();
+  renderKomutRotasiView();
+  toast(`"${s.title}" subdomain'i silindi.`, 'i');
+}
+
+// 💻 SNIPPET / KOD & FİKİR İŞLEMLERİ
+function openAddSnippetModal(snipId = null, isIdeaMode = false) {
   _editingSnippetId = snipId;
   const modalTitle = document.querySelector('#addSnippetModal .modal-title');
 
@@ -6032,12 +7180,14 @@ function openAddSnippetModal(snipId = null) {
       if (modalTitle) modalTitle.textContent = '✏️ Snippet / Not Düzenle';
     }
   } else {
-    document.getElementById('snipTitleInp').value = '';
-    document.getElementById('snipLangInp').value = 'HTML';
-    document.getElementById('snipCodeInp').value = '';
-    if (modalTitle) modalTitle.textContent = '💻 Kod Snippet / Not Ekle';
+    ['snipTitleInp', 'snipCodeInp'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = '';
+    });
+    const sLang = document.getElementById('snipLangInp');
+    if (sLang) sLang.value = isIdeaMode ? 'İçerik' : 'HTML';
+    if (modalTitle) modalTitle.textContent = isIdeaMode ? '💡 Yeni İçerik Fikri Ekle' : '💻 Kod Snippet / Not Ekle';
   }
-  document.getElementById('addSnippetModal').classList.add('on');
+  document.getElementById('addSnippetModal')?.classList.add('on');
 }
 
 function saveSnippetModal() {
@@ -6059,12 +7209,13 @@ function saveSnippetModal() {
     toast('Öğe güncellendi! 💻', 's');
   } else {
     S.snippets.push({ id: 'snip_' + Date.now(), title, lang, code });
-    toast('Kod Snippet kaydedildi! 💻', 's');
+    toast(lang === 'İçerik' ? 'İçerik fikri kaydedildi! 💡' : 'Kod Snippet kaydedildi! 💻', 's');
   }
 
   save();
   closeModal('addSnippetModal');
   _editingSnippetId = null;
+  activeKomutTab = (lang === 'İçerik') ? 'ideas' : 'snippets';
   renderKomutRotasiView();
 }
 
@@ -6078,10 +7229,11 @@ function deleteSnippet(snipId) {
   toast(`"${s.title}" silindi.`, 'i');
 }
 
+// 🛠️ WEBMASTER ARACI İŞLEMLERİ
 function openAddWebToolModal(toolId = null) {
   _editingWebToolId = toolId;
   const modalTitle = document.querySelector('#addWebToolModal .modal-title');
-  const allTools = S.webTools || DEFAULT_WEB_TOOLS;
+  const allTools = S.webTools || [];
 
   if (toolId) {
     const t = allTools.find(x => x.id === toolId);
@@ -6093,13 +7245,13 @@ function openAddWebToolModal(toolId = null) {
       if (modalTitle) modalTitle.textContent = '✏️ Webmaster Aracını Düzenle';
     }
   } else {
-    document.getElementById('webToolTitleInp').value = '';
-    document.getElementById('webToolUrlInp').value = '';
-    document.getElementById('webToolIconInp').value = '🌐';
-    document.getElementById('webToolNoteInp').value = '';
+    ['webToolTitleInp', 'webToolUrlInp', 'webToolNoteInp'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = '';
+    });
+    const wIco = document.getElementById('webToolIconInp'); if (wIco) wIco.value = '🌐';
     if (modalTitle) modalTitle.textContent = '🌐 Webmaster Aracı / Site Bağlantısı Ekle';
   }
-  document.getElementById('addWebToolModal').classList.add('on');
+  document.getElementById('addWebToolModal')?.classList.add('on');
 }
 
 function saveWebToolModal() {
@@ -6114,7 +7266,7 @@ function saveWebToolModal() {
     url = 'https://' + url;
   }
 
-  if (!S.webTools) S.webTools = [...DEFAULT_WEB_TOOLS];
+  if (!S.webTools) S.webTools = [];
 
   if (_editingWebToolId) {
     const t = S.webTools.find(x => x.id === _editingWebToolId);
@@ -6133,11 +7285,12 @@ function saveWebToolModal() {
   save();
   closeModal('addWebToolModal');
   _editingWebToolId = null;
+  activeKomutTab = 'tools';
   renderKomutRotasiView();
 }
 
 function deleteWebTool(toolId) {
-  if (!S.webTools) S.webTools = [...DEFAULT_WEB_TOOLS];
+  if (!S.webTools) S.webTools = [];
   const t = S.webTools.find(x => x.id === toolId);
   if (!t) return;
   S.webTools = S.webTools.filter(x => x.id !== toolId);
@@ -6146,36 +7299,114 @@ function deleteWebTool(toolId) {
   toast(`"${t.title}" kaldırıldı.`, 'i');
 }
 
-const DEFAULT_SUBDOMAINS = [
-  { id: 'subd1', title: 'Mikat — Kişisel Verimlilik & İbadet Asistanı', url: 'https://mikat.komutrotasi.com', icon: '🕋', note: 'Canlı zaman takibi, namaz, 40 hadis, ders ve bütçe yönetim uygulaması' },
-  { id: 'subd2', title: 'Bilişimci Hocam — Eğitim Portalı', url: 'https://bilisimcihocam.komutrotasi.com', icon: '🏫', note: 'Bilişim teknolojileri ders materyalleri ve sınav içerikleri' },
-  { id: 'subd3', title: 'Kod Laboratuvarı & Sandbox', url: 'https://lab.komutrotasi.com', icon: '💻', note: 'Kod denemeleri, web bileşenleri ve demo projeler' }
-];
+// ➕ MERKEZİ / TEKİL EKLE MENÜSÜ HEDEF DİNAMİK YÖNETİMİ
+function openUnifiedKomutModal(presetTab = null) {
+  const targetSel = document.getElementById('uKomutTargetInp');
+  if (targetSel) {
+    targetSel.value = presetTab || activeKomutTab || 'subdomains';
+  }
+  
+  // Input temizleme
+  ['uKomutTitleInp', 'uKomutUrlInp', 'uKomutNoteInp', 'uKomutCodeTitleInp', 'uKomutCodeTextInp'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  const ukIco = document.getElementById('uKomutIconInp'); if (ukIco) ukIco.value = '🌐';
+  const ukLang = document.getElementById('uKomutCodeLangInp');
+  if (ukLang) ukLang.value = (targetSel?.value === 'ideas') ? 'İçerik' : 'HTML';
 
-function deleteSubdomain(subId) {
-  if (!S.subdomains) S.subdomains = [...DEFAULT_SUBDOMAINS];
-  const s = S.subdomains.find(x => x.id === subId);
-  if (!s) return;
-  S.subdomains = S.subdomains.filter(x => x.id !== subId);
+  onUnifiedKomutTargetChange();
+  document.getElementById('unifiedKomutModal')?.classList.add('on');
+}
+
+function onUnifiedKomutTargetChange() {
+  const target = document.getElementById('uKomutTargetInp')?.value || 'subdomains';
+  const linkFields = document.getElementById('uKomutLinkFields');
+  const codeFields = document.getElementById('uKomutCodeFields');
+  const titleLbl = document.getElementById('uKomutTitleLbl');
+  const langSel = document.getElementById('uKomutCodeLangInp');
+
+  if (target === 'subdomains' || target === 'tools') {
+    if (linkFields) linkFields.style.display = 'contents';
+    if (codeFields) codeFields.style.display = 'none';
+    if (titleLbl) titleLbl.textContent = (target === 'subdomains') ? 'Subdomain Adı / Başlık' : 'Webmaster Aracı Adı';
+  } else {
+    if (linkFields) linkFields.style.display = 'none';
+    if (codeFields) codeFields.style.display = 'contents';
+    if (langSel) {
+      if (target === 'ideas') langSel.value = 'İçerik';
+      else if (langSel.value === 'İçerik') langSel.value = 'HTML';
+    }
+  }
+}
+
+function saveUnifiedKomutModal() {
+  const target = document.getElementById('uKomutTargetInp')?.value || 'subdomains';
+
+  if (target === 'subdomains') {
+    const title = document.getElementById('uKomutTitleInp').value.trim();
+    let url = document.getElementById('uKomutUrlInp').value.trim();
+    const icon = document.getElementById('uKomutIconInp').value;
+    const note = document.getElementById('uKomutNoteInp').value.trim();
+
+    if (!title || !url) { toast('Lütfen subdomain adı ve web adresi (URL) girin.', 'e'); return; }
+    if (!url.startsWith('http://') && !url.startsWith('https://')) url = 'https://' + url;
+
+    if (!S.subdomains) S.subdomains = [];
+    S.subdomains.push({ id: 'sd_' + Date.now(), title, url, icon, note });
+    toast('Yeni Subdomain eklendi! 🌐', 's');
+    activeKomutTab = 'subdomains';
+
+  } else if (target === 'tools') {
+    const title = document.getElementById('uKomutTitleInp').value.trim();
+    let url = document.getElementById('uKomutUrlInp').value.trim();
+    const icon = document.getElementById('uKomutIconInp').value;
+    const note = document.getElementById('uKomutNoteInp').value.trim();
+
+    if (!title || !url) { toast('Lütfen araç adı ve web adresi (URL) girin.', 'e'); return; }
+    if (!url.startsWith('http://') && !url.startsWith('https://')) url = 'https://' + url;
+
+    if (!S.webTools) S.webTools = [];
+    S.webTools.push({ id: 'wt_' + Date.now(), title, url, icon, note });
+    toast('Yeni Webmaster aracı eklendi! 🛠️', 's');
+    activeKomutTab = 'tools';
+
+  } else if (target === 'snippets' || target === 'ideas') {
+    const title = document.getElementById('uKomutCodeTitleInp').value.trim();
+    const lang = document.getElementById('uKomutCodeLangInp').value;
+    const code = document.getElementById('uKomutCodeTextInp').value.trim();
+
+    if (!title || !code) { toast('Lütfen başlık ve kod/not içeriği girin.', 'e'); return; }
+
+    if (!S.snippets) S.snippets = [];
+    S.snippets.push({ id: 'snip_' + Date.now(), title, lang, code });
+    toast(target === 'ideas' || lang === 'İçerik' ? 'Yeni İçerik Fikri eklendi! 💡' : 'Yeni Kod Snippet eklendi! 💻', 's');
+    activeKomutTab = (target === 'ideas' || lang === 'İçerik') ? 'ideas' : 'snippets';
+  }
+
   save();
+  closeModal('unifiedKomutModal');
+  
+  // Tab vurgusunu güncelle
+  document.querySelectorAll('#v-komutrotasi .fchip').forEach(b => b.classList.remove('on'));
+  const activeChip = document.getElementById(`ktab-${activeKomutTab}`);
+  if (activeChip) activeChip.classList.add('on');
+
   renderKomutRotasiView();
-  toast(`"${s.title}" subdomain'i silindi.`, 'i');
 }
 
 function renderKomutRotasiView() {
   const cont = document.getElementById('komutGridContainer');
   if (!cont) return;
 
-  if (!S.snippets) S.snippets = [
-    { id: 's1', title: 'CSS Modern Glassmorphism Kart Kodu', lang: 'HTML', code: 'background: rgba(255, 255, 255, 0.08);\nbackdrop-filter: blur(12px);\nborder: 1px solid rgba(255, 255, 255, 0.15);' },
-    { id: 's2', title: 'Python Listeyi Ters Çevirme Snippet', lang: 'Python', code: 'numbers = [1, 2, 3, 4, 5]\nreversed_list = numbers[::-1]\nprint(reversed_list)' },
-    { id: 's3', title: 'Python 3.12 Yenilikleri & Performans Rehberi', lang: 'İçerik', code: 'Makale Taslağı:\n1. GIL İyileştirmeleri\n2. F-String Esneklikleri\n3. Hata Mesajları' },
-    { id: 's4', title: 'Yapay Zeka Destekli Web Geliştirme İpuçları', lang: 'İçerik', code: 'İçerik Fikri:\nSitede yayımlanacak AI prompt örnekleri ve rehber.' }
-  ];
+  if (!S.snippets) S.snippets = [];
+  if (!S.subdomains || !S.subdomains.length) {
+    S.subdomains = JSON.parse(JSON.stringify(DEFAULT_SUBDOMAINS));
+  }
+  if (!S.webTools || !S.webTools.length) {
+    S.webTools = JSON.parse(JSON.stringify(DEFAULT_WEB_TOOLS));
+  }
 
   if (activeKomutTab === 'subdomains') {
-    if (!S.subdomains) S.subdomains = [...DEFAULT_SUBDOMAINS];
-
     cont.innerHTML = `
       <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(250px, 1fr)); gap:14px; width:100%;">
         ${S.subdomains.map(sd => `
@@ -6184,8 +7415,8 @@ function renderKomutRotasiView() {
               <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
                 <div style="font-size:2rem;">${esc(sd.icon || '🌐')}</div>
                 <div style="display:flex; gap:4px;">
-                  <button class="tbtn" onclick="openAddWebToolModal('${sd.id}')" style="font-size:0.75rem; padding:3px 8px;" title="Düzenle">✏️</button>
-                  <button class="tbtn" onclick="deleteSubdomain('${sd.id}')" style="font-size:0.75rem; padding:3px 8px; color:#ef4444;" title="Sil">🗑️</button>
+                  <button class="book-act-btn" onclick="openAddSubdomainModal('${sd.id}')" title="Düzenle">✏️</button>
+                  <button class="book-act-btn del" onclick="deleteSubdomain('${sd.id}')" title="Sil">🗑️</button>
                 </div>
               </div>
               <div style="font-weight:800; font-size:1.05rem; color:var(--gold); margin-bottom:4px;">${esc(sd.title)}</div>
@@ -6198,7 +7429,7 @@ function renderKomutRotasiView() {
           </div>
         `).join('')}
 
-        <div onclick="openAddWebToolModal()" style="background:rgba(232,184,75,0.04); border:2px dashed var(--bd); padding:20px; border-radius:14px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; cursor:pointer; min-height:160px; transition:all 0.2s ease;" onmouseover="this.style.borderColor='var(--gold)';" onmouseout="this.style.borderColor='var(--bd)';">
+        <div onclick="openAddSubdomainModal()" style="background:rgba(232,184,75,0.04); border:2px dashed var(--bd); padding:20px; border-radius:14px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; cursor:pointer; min-height:160px; transition:all 0.2s ease;" onmouseover="this.style.borderColor='var(--gold)';" onmouseout="this.style.borderColor='var(--bd)';">
           <div style="font-size:2rem; color:var(--gold);">🌐</div>
           <div style="font-weight:800; font-size:0.9rem; color:var(--gold);">+ Yeni Subdomain Ekle</div>
           <div style="font-size:0.75rem; color:var(--tx3); text-align:center;">mikat.komutrotasi.com, lab.komutrotasi.com vb.</div>
@@ -6209,8 +7440,6 @@ function renderKomutRotasiView() {
   }
 
   if (activeKomutTab === 'tools') {
-    if (!S.webTools) S.webTools = [...DEFAULT_WEB_TOOLS];
-    
     cont.innerHTML = `
       <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(250px, 1fr)); gap:14px; width:100%;">
         ${S.webTools.map(wt => `
@@ -6219,8 +7448,8 @@ function renderKomutRotasiView() {
               <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
                 <div style="font-size:2rem;">${esc(wt.icon || '🌐')}</div>
                 <div style="display:flex; gap:4px;">
-                  <button class="tbtn" onclick="openAddWebToolModal('${wt.id}')" style="font-size:0.75rem; padding:3px 8px;" title="Düzenle">✏️</button>
-                  <button class="tbtn" onclick="deleteWebTool('${wt.id}')" style="font-size:0.75rem; padding:3px 8px; color:#ef4444;" title="Sil">🗑️</button>
+                  <button class="book-act-btn" onclick="openAddWebToolModal('${wt.id}')" title="Düzenle">✏️</button>
+                  <button class="book-act-btn del" onclick="deleteWebTool('${wt.id}')" title="Sil">🗑️</button>
                 </div>
               </div>
               <div style="font-weight:800; font-size:1.05rem; color:var(--teal); margin-bottom:4px;">${esc(wt.title)}</div>
@@ -6233,9 +7462,9 @@ function renderKomutRotasiView() {
         `).join('')}
         
         <div onclick="openAddWebToolModal()" style="background:rgba(62,207,176,0.04); border:2px dashed var(--bd); padding:20px; border-radius:14px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; cursor:pointer; min-height:160px; transition:all 0.2s ease;" onmouseover="this.style.borderColor='var(--teal)';" onmouseout="this.style.borderColor='var(--bd)';">
-          <div style="font-size:2rem; color:var(--teal);">➕</div>
+          <div style="font-size:2rem; color:var(--teal);">🛠️</div>
           <div style="font-weight:800; font-size:0.9rem; color:var(--teal);">+ Yeni Webmaster Aracı Ekle</div>
-          <div style="font-size:0.75rem; color:var(--tx3); text-align:center;">Analytics, WordPress Admin, Search Console vb.</div>
+          <div style="font-size:0.75rem; color:var(--tx3); text-align:center;">Analytics, Search Console, PageSpeed vb.</div>
         </div>
       </div>
     `;
@@ -6253,26 +7482,39 @@ function renderKomutRotasiView() {
   if (q) list = list.filter(s => (s.title || '').toLowerCase().includes(q) || (s.code || '').toLowerCase().includes(q));
 
   if (!list.length) {
-    cont.innerHTML = `<div class="empty"><div class="empty-ico">💻</div><div class="empty-txt">Kayıtlı öye bulunamadı.</div></div>`;
+    const isIdea = (activeKomutTab === 'ideas');
+    cont.innerHTML = `
+      <div style="display:flex; flex-direction:column; gap:14px; width:100%;">
+        <div class="empty"><div class="empty-ico">${isIdea ? '💡' : '💻'}</div><div class="empty-txt">${isIdea ? 'Henüz içerik fikri eklenmemiş.' : 'Kayıtlı kod snippet bulunamadı.'}</div></div>
+        <div onclick="openAddSnippetModal(null, ${isIdea})" style="background:rgba(62,207,176,0.04); border:2px dashed var(--bd); padding:20px; border-radius:14px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; cursor:pointer; transition:all 0.2s ease;" onmouseover="this.style.borderColor='var(--teal)';" onmouseout="this.style.borderColor='var(--bd)';">
+          <div style="font-size:2rem; color:var(--teal);">${isIdea ? '💡' : '💻'}</div>
+          <div style="font-weight:800; font-size:0.9rem; color:var(--teal);">${isIdea ? '+ Yeni İçerik Fikri Ekle' : '+ Yeni Kod Snippet Ekle'}</div>
+        </div>
+      </div>
+    `;
     return;
   }
 
-  cont.innerHTML = list.map(s => `
-    <div style="background:var(--sf); border:1px solid var(--bd); border-radius:14px; padding:16px 18px; display:flex; flex-direction:column; gap:10px; width:100%;">
-      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-        <div style="display:flex; align-items:center; gap:8px;">
-          <span style="font-size:0.75rem; font-weight:800; color:var(--teal); background:rgba(62,207,176,0.12); padding:2px 8px; border-radius:8px;">${esc(s.lang)}</span>
-          <span style="font-weight:800; font-size:1rem; color:var(--tx);">${esc(s.title)}</span>
+  cont.innerHTML = `
+    <div style="display:flex; flex-direction:column; gap:12px; width:100%;">
+      ${list.map(s => `
+        <div style="background:var(--sf); border:1px solid var(--bd); border-radius:14px; padding:12px 14px; display:flex; flex-direction:column; gap:8px; width:100%; box-sizing:border-box;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; width:100%;">
+            <div style="display:flex; align-items:center; gap:6px; flex:1 1 auto; min-width:0;">
+              <span style="font-size:0.72rem; font-weight:800; color:var(--teal); background:rgba(62,207,176,0.12); padding:2px 7px; border-radius:6px; white-space:nowrap; flex-shrink:0;">${esc(s.lang)}</span>
+              <span style="font-weight:800; font-size:0.95rem; color:var(--tx); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(s.title)}</span>
+            </div>
+            <div style="display:flex; gap:4px; align-items:center; flex-shrink:0; margin-left:auto;">
+              <button class="book-act-btn" onclick="openAddSnippetModal('${s.id}')" title="Düzenle">✏️ Düzenle</button>
+              <button class="book-act-btn del" onclick="deleteSnippet('${s.id}')" title="Sil">🗑️ Sil</button>
+              <button class="book-act-btn" onclick="navigator.clipboard.writeText(\`${esc(s.code)}\`); toast('Kod panoya kopyalandı!', 's');" title="Kopyala">📋 Kopyala</button>
+            </div>
+          </div>
+          <pre style="background:var(--sf2); border:1px solid var(--bd); padding:10px; border-radius:10px; font-family:'JetBrains Mono',monospace; font-size:0.80rem; color:var(--gold); overflow-x:auto; margin:0; box-sizing:border-box;"><code>${esc(s.code)}</code></pre>
         </div>
-        <div style="display:flex; gap:6px; align-items:center; flex-shrink:0; margin-left:auto;">
-          <button class="tbtn" onclick="openAddSnippetModal('${s.id}')" style="font-size:0.75rem; padding:4px 10px; border-radius:8px;">✏️ Düzenle</button>
-          <button class="tbtn" onclick="deleteSnippet('${s.id}')" style="font-size:0.75rem; padding:4px 10px; border-radius:8px; color:#ef4444; border-color:rgba(239,68,68,0.3); background:rgba(239,68,68,0.08);">🗑️ Sil</button>
-          <button class="tbtn" onclick="navigator.clipboard.writeText(\`${esc(s.code)}\`); toast('Kod panoya kopyalandı!', 's');" style="font-size:0.75rem; padding:4px 10px; border-radius:8px;">📋 Kopyala</button>
-        </div>
-      </div>
-      <pre style="background:var(--sf2); border:1px solid var(--bd); padding:12px; border-radius:10px; font-family:'JetBrains Mono',monospace; font-size:0.82rem; color:var(--gold); overflow-x:auto; margin:0;"><code>${esc(s.code)}</code></pre>
+      `).join('')}
     </div>
-  `).join('');
+  `;
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -6288,9 +7530,10 @@ function switchTeacherTab(tab, btn) {
   renderTeacherView();
 }
 
-function openAddTeacherTaskModal(taskId = null) {
+function openAddTeacherTaskModal(taskId = null, presetTab = null) {
   _editingTeacherTaskId = taskId;
   const modalTitle = document.querySelector('#addTeacherTaskModal .modal-title');
+  const targetTab = presetTab || activeTeacherTab || 'classes';
 
   if (taskId) {
     const t = (S.teacherTasks || []).find(x => x.id === taskId);
@@ -6301,12 +7544,12 @@ function openAddTeacherTaskModal(taskId = null) {
       if (modalTitle) modalTitle.textContent = '✏️ Ders Görevini Düzenle';
     }
   } else {
-    document.getElementById('ttaskTitleInp').value = '';
-    document.getElementById('ttaskClassInp').value = '5. Sınıf';
-    document.getElementById('ttaskTypeInp').value = 'Müfredat';
+    const ttTitle = document.getElementById('ttaskTitleInp'); if (ttTitle) ttTitle.value = '';
+    const ttClass = document.getElementById('ttaskClassInp'); if (ttClass) ttClass.value = targetTab === 'lab' ? 'Laboratuvar' : '5. Sınıf';
+    const ttType = document.getElementById('ttaskTypeInp'); if (ttType) ttType.value = targetTab === 'exams' ? 'Sınav' : (targetTab === 'lab' ? 'Lab' : 'Müfredat');
     if (modalTitle) modalTitle.textContent = '🏫 Ders / Sınıf Görevi Ekle';
   }
-  document.getElementById('addTeacherTaskModal').classList.add('on');
+  document.getElementById('addTeacherTaskModal')?.classList.add('on');
 }
 
 function saveTeacherTaskModal() {
@@ -6318,22 +7561,91 @@ function saveTeacherTaskModal() {
 
   if (!S.teacherTasks) S.teacherTasks = [];
 
+  let tabTarget = activeTeacherTab || 'classes';
+  if (type === 'Sınav' || type === 'Ödev') tabTarget = 'exams';
+  else if (type === 'Lab' || cls === 'Laboratuvar') tabTarget = 'lab';
+  else if (type === 'Müfredat') tabTarget = 'classes';
+
   if (_editingTeacherTaskId) {
     const t = S.teacherTasks.find(x => x.id === _editingTeacherTaskId);
     if (t) {
       t.title = title;
       t.class = cls;
       t.type = type;
+      t.tabTarget = tabTarget;
     }
     toast('Ders görevi güncellendi! 🏫', 's');
   } else {
-    S.teacherTasks.push({ id: 'tt_' + Date.now(), title, class: cls, type, done: false });
+    S.teacherTasks.push({ id: 'tt_' + Date.now(), title, class: cls, type, tabTarget, done: false });
     toast('Ders görevi eklendi! 🏫', 's');
   }
 
   save();
   closeModal('addTeacherTaskModal');
   _editingTeacherTaskId = null;
+  activeTeacherTab = tabTarget;
+  renderTeacherView();
+}
+
+// ➕ MERKEZİ / TEKİL BİLİŞİMCİ HOCAM EKLE MENÜSÜ
+function openUnifiedTeacherModal(presetTab = null) {
+  const targetSel = document.getElementById('uTeacherTargetInp');
+  if (targetSel) {
+    targetSel.value = presetTab || activeTeacherTab || 'classes';
+  }
+
+  const utTitle = document.getElementById('uTeacherTitleInp'); if (utTitle) utTitle.value = '';
+  onUnifiedTeacherTargetChange();
+  document.getElementById('unifiedTeacherModal')?.classList.add('on');
+}
+
+function onUnifiedTeacherTargetChange() {
+  const target = document.getElementById('uTeacherTargetInp')?.value || 'classes';
+  const classSel = document.getElementById('uTeacherClassInp');
+  const typeSel = document.getElementById('uTeacherTypeInp');
+
+  if (target === 'classes') {
+    if (classSel && classSel.value === 'Laboratuvar') classSel.value = '5. Sınıf';
+    if (typeSel) typeSel.value = 'Müfredat';
+  } else if (target === 'exams') {
+    if (classSel && classSel.value === 'Laboratuvar') classSel.value = '5. Sınıf';
+    if (typeSel) typeSel.value = 'Sınav';
+  } else if (target === 'lab') {
+    if (classSel) classSel.value = 'Laboratuvar';
+    if (typeSel) typeSel.value = 'Lab';
+  }
+}
+
+function saveUnifiedTeacherModal() {
+  const target = document.getElementById('uTeacherTargetInp')?.value || 'classes';
+  const title = document.getElementById('uTeacherTitleInp').value.trim();
+  const cls = document.getElementById('uTeacherClassInp').value;
+  const type = document.getElementById('uTeacherTypeInp').value;
+
+  if (!title) { toast('Lütfen görev / ders başlığı girin.', 'e'); return; }
+
+  if (!S.teacherTasks) S.teacherTasks = [];
+
+  S.teacherTasks.push({
+    id: 'tt_' + Date.now(),
+    title,
+    class: cls,
+    type,
+    tabTarget: target,
+    done: false
+  });
+
+  toast(target === 'exams' ? 'Sınav & Ödev görevi eklendi! 📝' : (target === 'lab' ? 'Lab & Tahta görevi eklendi! 🖥️' : 'Müfredat görevi eklendi! 📚'), 's');
+
+  save();
+  closeModal('unifiedTeacherModal');
+  activeTeacherTab = target;
+
+  // Tab vurgusunu güncelle
+  document.querySelectorAll('#v-teacher .fchip').forEach(b => b.classList.remove('on'));
+  const activeChip = document.getElementById(`ttab-${activeTeacherTab}`);
+  if (activeChip) activeChip.classList.add('on');
+
   renderTeacherView();
 }
 
@@ -6361,50 +7673,69 @@ function renderTeacherView() {
   const cont = document.getElementById('teacherGridContainer');
   if (!cont) return;
 
-  if (!S.teacherTasks) S.teacherTasks = [
-    { id: 'tt1', title: '5-A Scratch Değişkenler & Algoritma Konusu', class: '5. Sınıf', type: 'Müfredat', done: false },
-    { id: 'tt2', title: '6-B Bilişim 1. Dönem 1. Yazılı Hazırlanması', class: '6. Sınıf', type: 'Sınav', done: false },
-    { id: 'tt3', title: 'Bilişim Laboratuvarı Bilgisayar Güncellemeleri', class: 'Laboratuvar', type: 'Lab', done: true }
-  ];
+  if (!S.teacherTasks) S.teacherTasks = [];
 
   let list = S.teacherTasks;
   if (activeTeacherTab === 'classes') {
-    list = list.filter(t => t.type === 'Müfredat' || (t.class && (t.class.includes('Sınıf') || t.class.includes('Kulüp') || t.class.includes('Takım'))));
+    list = list.filter(t => t.tabTarget === 'classes' || (!t.tabTarget && (t.type === 'Müfredat' || (t.class && !t.class.includes('Laboratuvar') && t.type !== 'Sınav' && t.type !== 'Ödev' && t.type !== 'Lab'))));
   } else if (activeTeacherTab === 'exams') {
-    list = list.filter(t => t.type === 'Sınav' || t.type === 'Ödev');
+    list = list.filter(t => t.tabTarget === 'exams' || (!t.tabTarget && (t.type === 'Sınav' || t.type === 'Ödev')));
   } else if (activeTeacherTab === 'lab') {
-    list = list.filter(t => t.type === 'Lab' || t.class === 'Laboratuvar');
+    list = list.filter(t => t.tabTarget === 'lab' || (!t.tabTarget && (t.type === 'Lab' || t.class === 'Laboratuvar')));
   }
 
   const q = (document.getElementById('searchTeacherInp')?.value || '').toLowerCase().trim();
   if (q) list = list.filter(t => (t.title || '').toLowerCase().includes(q) || (t.class || '').toLowerCase().includes(q));
 
+  const tabNames = {
+    classes: 'Sınıflar & Müfredat',
+    exams: 'Sınav & Ödev',
+    lab: 'Lab & Tahta'
+  };
+
   if (!list.length) {
-    cont.innerHTML = `<div class="empty"><div class="empty-ico">🏫</div><div class="empty-txt">Ders görevi bulunamadı.</div></div>`;
+    cont.innerHTML = `
+      <div style="display:flex; flex-direction:column; gap:14px; width:100%;">
+        <div class="empty"><div class="empty-ico">🏫</div><div class="empty-txt">Bu kategoride (${tabNames[activeTeacherTab] || ''}) henüz görev bulunamadı.</div></div>
+        <div onclick="openAddTeacherTaskModal(null, '${activeTeacherTab}')" style="background:rgba(167,139,250,0.04); border:2px dashed var(--bd); padding:20px; border-radius:14px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; cursor:pointer; transition:all 0.2s ease;" onmouseover="this.style.borderColor='var(--pur)';" onmouseout="this.style.borderColor='var(--bd)';">
+          <div style="font-size:2rem; color:var(--pur);">🏫</div>
+          <div style="font-weight:800; font-size:0.9rem; color:var(--pur);">+ Yeni ${tabNames[activeTeacherTab] || 'Görev'} Ekle</div>
+        </div>
+      </div>
+    `;
     return;
   }
 
-  cont.innerHTML = list.map(t => `
-    <div style="background:var(--sf); border:1.5px solid ${t.done ? 'var(--teal)' : 'var(--bd)'}; border-radius:14px; padding:16px 18px; display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; flex-wrap:wrap;">
-      <div style="display:flex; align-items:center; gap:12px; cursor:pointer; flex:1; min-width:200px;" onclick="toggleTeacherTask('${t.id}')">
-        <div style="width:26px; height:26px; border-radius:50%; border:2px solid ${t.done ? 'var(--teal)' : 'var(--tx3)'}; background:${t.done ? 'var(--teal)' : 'transparent'}; color:#0b1320; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:0.85rem; flex-shrink:0;">
-          ${t.done ? '✓' : ''}
-        </div>
-        <div>
-          <div style="font-weight:800; font-size:1rem; color:${t.done ? 'var(--teal)' : 'var(--tx)'}; text-decoration:${t.done ? 'line-through' : 'none'};">${esc(t.title)}</div>
-          <div style="display:flex; gap:6px; margin-top:4px;">
-            <span style="font-size:0.72rem; font-weight:700; color:var(--pur); background:rgba(167,139,250,0.12); padding:1px 8px; border-radius:8px;">${esc(t.class)}</span>
-            <span style="font-size:0.72rem; font-weight:700; color:var(--gold); background:rgba(232,184,75,0.12); padding:1px 8px; border-radius:8px;">${esc(t.type)}</span>
+  cont.innerHTML = `
+    <div style="display:flex; flex-direction:column; gap:10px; width:100%;">
+      ${list.map(t => `
+        <div style="background:var(--sf); border:1.5px solid ${t.done ? 'var(--teal)' : 'var(--bd)'}; border-radius:14px; padding:12px 14px; display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; box-sizing:border-box; flex-wrap:wrap;">
+          <div style="display:flex; align-items:center; gap:10px; cursor:pointer; flex:1 1 180px; min-width:0;" onclick="toggleTeacherTask('${t.id}')">
+            <div style="width:24px; height:24px; border-radius:50%; border:2px solid ${t.done ? 'var(--teal)' : 'var(--tx3)'}; background:${t.done ? 'var(--teal)' : 'transparent'}; color:#0b1320; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:0.80rem; flex-shrink:0;">
+              ${t.done ? '✓' : ''}
+            </div>
+            <div style="min-width:0; flex:1;">
+              <div style="font-weight:800; font-size:0.95rem; color:${t.done ? 'var(--teal)' : 'var(--tx)'}; text-decoration:${t.done ? 'line-through' : 'none'}; word-break:break-word;">${esc(t.title)}</div>
+              <div style="display:flex; gap:6px; margin-top:3px; flex-wrap:wrap;">
+                <span style="font-size:0.70rem; font-weight:700; color:var(--pur); background:rgba(167,139,250,0.12); padding:1px 6px; border-radius:6px;">${esc(t.class)}</span>
+                <span style="font-size:0.70rem; font-weight:700; color:var(--gold); background:rgba(232,184,75,0.12); padding:1px 6px; border-radius:6px;">${esc(t.type)}</span>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex; gap:4px; align-items:center; flex-shrink:0; margin-left:auto;">
+            <button class="book-act-btn" onclick="openAddTeacherTaskModal('${t.id}')" title="Düzenle">✏️ Düzenle</button>
+            <button class="book-act-btn del" onclick="deleteTeacherTask('${t.id}')" title="Sil">🗑️ Sil</button>
+            <button class="book-act-btn focus" onclick="startFocusForTask('ttask_${t.id}', 30)" title="30dk Odaklan">⏱ 30dk</button>
           </div>
         </div>
-      </div>
-      <div style="display:flex; gap:6px; align-items:center; flex-shrink:0; margin-left:auto;">
-        <button class="tbtn" onclick="openAddTeacherTaskModal('${t.id}')" style="font-size:0.75rem; padding:4px 10px; border-radius:8px;">✏️ Düzenle</button>
-        <button class="tbtn" onclick="deleteTeacherTask('${t.id}')" style="font-size:0.75rem; padding:4px 10px; border-radius:8px; color:#ef4444; border-color:rgba(239,68,68,0.3); background:rgba(239,68,68,0.08);">🗑️ Sil</button>
-        <button class="tbtn" onclick="startFocusForTask('ttask_${t.id}', 30)" style="font-size:0.75rem; padding:4px 10px; border-radius:8px; border:1px solid var(--teal); color:var(--teal); background:rgba(62,207,176,0.1); font-weight:700;">⏱ 30dk Odaklan</button>
+      `).join('')}
+
+      <div onclick="openAddTeacherTaskModal(null, '${activeTeacherTab}')" style="background:rgba(167,139,250,0.04); border:2px dashed var(--bd); padding:14px; border-radius:14px; display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer; margin-top:4px; transition:all 0.2s ease;" onmouseover="this.style.borderColor='var(--pur)';" onmouseout="this.style.borderColor='var(--bd)';">
+        <div style="font-size:1.2rem; color:var(--pur);">➕</div>
+        <div style="font-weight:800; font-size:0.88rem; color:var(--pur);">+ Bu Kategoriye (${tabNames[activeTeacherTab] || ''}) Görev Ekle</div>
       </div>
     </div>
-  `).join('');
+  `;
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -6466,7 +7797,7 @@ function getFinanceCategories() {
 
 function openManageFinanceCategoriesModal() {
   renderFinanceCategoryManagerList();
-  document.getElementById('manageFinanceCategoriesModal').classList.add('on');
+  document.getElementById('manageFinanceCategoriesModal')?.classList.add('on');
 }
 
 function renderFinanceCategoryManagerList() {
@@ -6548,19 +7879,19 @@ function openAddFinanceModal(itemValId = null) {
       if (modalTitle) modalTitle.textContent = '✏️ Finans İşlemini Düzenle';
     }
   } else {
-    document.getElementById('finTitleInp').value = '';
-    document.getElementById('finTypeInp').value = 'expense';
-    document.getElementById('finAmountInp').value = '';
+    ['finTitleInp', 'finAmountInp', 'finNoteInp'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = '';
+    });
+    const fType = document.getElementById('finTypeInp'); if (fType) fType.value = 'expense';
     const cats = getFinanceCategories();
-    document.getElementById('finCategoryInp').value = cats[0] || 'Maaş / Ek Ders';
-    document.getElementById('finDateInp').value = today();
-    document.getElementById('finInstallmentCountInp').value = '1';
-    document.getElementById('finPaidInstallmentsInp').value = '0';
-    document.getElementById('finNoteInp').value = '';
+    const fCat = document.getElementById('finCategoryInp'); if (fCat) fCat.value = cats[0] || 'Maaş / Ek Ders';
+    const fDate = document.getElementById('finDateInp'); if (fDate) fDate.value = today();
+    const fInst = document.getElementById('finInstallmentCountInp'); if (fInst) fInst.value = '1';
+    const fPaid = document.getElementById('finPaidInstallmentsInp'); if (fPaid) fPaid.value = '0';
     if (modalTitle) modalTitle.textContent = '💰 Finans İşlemi Ekle';
   }
   toggleInstallmentDetails();
-  document.getElementById('addFinanceModal').classList.add('on');
+  document.getElementById('addFinanceModal')?.classList.add('on');
 }
 
 function saveFinanceModal() {
@@ -6666,34 +7997,34 @@ function renderFinanceView() {
     const monthlyAmt = isInst ? f.amount / totalInst : f.amount;
 
     return `
-      <div style="background:var(--sf); border:1.5px solid ${isInc ? 'rgba(62,207,176,0.3)' : 'var(--bd)'}; border-radius:14px; padding:16px 18px; display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; flex-wrap:wrap;">
-        <div style="display:flex; align-items:center; gap:12px; flex:1; min-width:220px;">
-          <div style="width:36px; height:36px; border-radius:10px; background:${isInc ? 'rgba(62,207,176,0.12)' : (isInst ? 'rgba(232,184,75,0.12)' : 'rgba(239,68,68,0.12)')}; color:${isInc ? 'var(--teal)' : (isInst ? 'var(--gold)' : '#ef4444')}; display:flex; align-items:center; justify-content:center; font-size:1.2rem; flex-shrink:0; font-weight:900;">
-            ${isInc ? '📥' : (isInst ? '💳' : '📤')}
+      <div class="fin-card-item" style="background:var(--sf); border:1.5px solid ${isInc ? 'rgba(62,207,176,0.35)' : (isInst ? 'rgba(232,184,75,0.35)' : 'var(--bd)')}; border-radius:14px; padding:12px 14px; display:flex; flex-direction:column; gap:8px; width:100%; box-sizing:border-box;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:nowrap; gap:8px; width:100%; box-sizing:border-box;">
+          <div style="display:flex; align-items:center; gap:8px; min-width:0; flex:1 1 auto; overflow:hidden;">
+            <div style="width:30px; height:30px; border-radius:8px; background:${isInc ? 'rgba(62,207,176,0.14)' : (isInst ? 'rgba(232,184,75,0.14)' : 'rgba(239,68,68,0.12)')}; color:${isInc ? 'var(--teal)' : (isInst ? 'var(--gold)' : '#ef4444')}; display:flex; align-items:center; justify-content:center; font-size:1rem; flex-shrink:0; font-weight:900;">
+              ${isInc ? '📥' : (isInst ? '💳' : '📤')}
+            </div>
+            <div style="font-weight:800; font-size:0.95rem; color:var(--tx); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0;">
+              ${esc(f.title)}
+            </div>
           </div>
-          <div>
-            <div style="font-weight:800; font-size:1.05rem; color:var(--tx);">${esc(f.title)}</div>
-            <div style="display:flex; gap:6px; align-items:center; margin-top:4px; flex-wrap:wrap;">
-              <span style="font-size:0.72rem; font-weight:700; color:var(--gold); background:rgba(232,184,75,0.12); padding:1px 8px; border-radius:8px;">${esc(f.category)}</span>
-              ${isInst ? `<span style="font-size:0.72rem; font-weight:800; color:var(--teal); background:rgba(62,207,176,0.12); padding:1px 8px; border-radius:8px;">💳 ${paidInst}/${totalInst} Taksit Ödendi (${fmtTL(monthlyAmt)}/ay)</span>` : ''}
-              ${f.date ? `<span style="font-size:0.72rem; color:var(--tx3);">📅 ${esc(f.date)}</span>` : ''}
-              ${f.note ? `<span style="font-size:0.72rem; color:var(--tx2); font-style:italic;">💬 ${esc(f.note)}</span>` : ''}
+
+          <div style="display:flex; align-items:center; gap:8px; flex-shrink:0; margin-left:auto;">
+            <div style="font-weight:900; font-size:1.05rem; color:${isInc ? 'var(--teal)' : '#ef4444'}; white-space:nowrap; font-family:'JetBrains Mono',monospace;">
+              ${isInc ? '+' : '-'}${fmtTL(f.amount)}
+            </div>
+            <div style="display:flex; gap:4px; align-items:center; flex-shrink:0;">
+              ${isInst && paidInst < totalInst ? `<button class="fin-act-btn focus" onclick="payFinanceInstallment('${f.id}')" title="1 Taksit Öde">💳 Öde</button>` : ''}
+              <button class="fin-act-btn" onclick="openAddFinanceModal('${f.id}')" title="Düzenle">✏️</button>
+              <button class="fin-act-btn del" onclick="deleteFinanceItem('${f.id}')" title="Sil">🗑️</button>
             </div>
           </div>
         </div>
 
-        <div style="display:flex; gap:10px; align-items:center; margin-left:auto; flex-wrap:wrap;">
-          <div style="text-align:right;">
-            <div style="font-weight:900; font-size:1.15rem; color:${isInc ? 'var(--teal)' : '#ef4444'}; white-space:nowrap;">
-              ${isInc ? '+' : '-'}${fmtTL(f.amount)}
-            </div>
-            ${isInst ? `<div style="font-size:0.72rem; font-weight:700; color:var(--tx3);">${paidInst >= totalInst ? '✅ Borç Bitti' : `Kalan: ${totalInst - paidInst} Taksit (${fmtTL((totalInst - paidInst) * monthlyAmt)})`}</div>` : ''}
-          </div>
-          <div style="display:flex; gap:4px; align-items:center;">
-            ${isInst && paidInst < totalInst ? `<button class="tbtn" onclick="payFinanceInstallment('${f.id}')" style="font-size:0.75rem; padding:4px 8px; border-color:var(--teal); color:var(--teal);" title="1 Taksit Öde">💳 Taksit Öde</button>` : ''}
-            <button class="tbtn" onclick="openAddFinanceModal('${f.id}')" style="font-size:0.75rem; padding:4px 8px;" title="Düzenle">✏️</button>
-            <button class="tbtn" onclick="deleteFinanceItem('${f.id}')" style="font-size:0.75rem; padding:4px 8px; color:#ef4444;" title="Sil">🗑️</button>
-          </div>
+        <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; width:100%; font-size:0.72rem; box-sizing:border-box;">
+          <span style="font-weight:700; color:var(--gold); background:rgba(232,184,75,0.12); padding:2px 7px; border-radius:6px; white-space:nowrap;">${esc(f.category)}</span>
+          ${isInst ? `<span style="font-weight:800; color:var(--teal); background:rgba(62,207,176,0.12); padding:2px 7px; border-radius:6px; white-space:nowrap;">💳 ${paidInst}/${totalInst} Taksit (${fmtTL(monthlyAmt)}/ay) ${paidInst >= totalInst ? '✅ Borç Bitti' : `· Kalan: ${totalInst - paidInst}`}</span>` : ''}
+          ${f.date ? `<span style="color:var(--tx3); white-space:nowrap;">📅 ${esc(f.date)}</span>` : ''}
+          ${f.note ? `<span style="color:var(--tx2); font-style:italic; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:200px;">💬 ${esc(f.note)}</span>` : ''}
         </div>
       </div>
     `;
@@ -6701,3 +8032,695 @@ function renderFinanceView() {
 }
 
 
+/* ════════════════════════════════════════════════════════════
+   MOBİL UX İYİLEŞTİRMELERİ
+   ════════════════════════════════════════════════════════════ */
+
+/* ─── MOBİL DRAWER (Slide-in Menü) ─── */
+function toggleMobileDrawer() {
+  const drawer = document.getElementById('mobileDrawer');
+  const overlay = document.getElementById('mobileDrawerOverlay');
+  if (!drawer) return;
+
+  const isOpen = drawer.classList.contains('on');
+  if (isOpen) {
+    closeMobileDrawer();
+  } else {
+    openMobileDrawer();
+  }
+}
+
+function openMobileDrawer() {
+  const drawer = document.getElementById('mobileDrawer');
+  const overlay = document.getElementById('mobileDrawerOverlay');
+  if (!drawer) return;
+
+  const hamburgerBtn = document.getElementById('hamburgerBtn');
+  // Önce overlay'i display:block yap, sonra opacity geçişi için on class'ını ekle
+  overlay.style.display = 'block';
+  requestAnimationFrame(() => {
+    drawer.classList.add('on');
+    overlay.classList.add('on');
+    if (hamburgerBtn) hamburgerBtn.textContent = '✕';
+  });
+
+  // Klavye erişilebilirlik: escape ile kapat
+  document.addEventListener('keydown', _drawerEscHandler);
+}
+
+function closeMobileDrawer() {
+  const drawer = document.getElementById('mobileDrawer');
+  const overlay = document.getElementById('mobileDrawerOverlay');
+  const hamburgerBtn = document.getElementById('hamburgerBtn');
+  if (!drawer) return;
+
+  drawer.classList.remove('on');
+  overlay.classList.remove('on');
+  if (hamburgerBtn) hamburgerBtn.textContent = '☰';
+
+  // Geçiş bittikten sonra display'i kaldır
+  setTimeout(() => {
+    if (!overlay.classList.contains('on')) {
+      overlay.style.display = 'none';
+    }
+  }, 280);
+
+  document.removeEventListener('keydown', _drawerEscHandler);
+}
+
+function _drawerEscHandler(e) {
+  if (e.key === 'Escape') closeMobileDrawer();
+}
+
+/**
+ * iOS Safari'de %100vh gerçek görünür alanı kapsamaz.
+ * Gerçek görünür yüksekliği CSS değişkeni olarak set ediyoruz.
+ */
+function setMobileVH() {
+  const vh = window.innerHeight * 0.01;
+  document.documentElement.style.setProperty('--vh', `${vh}px`);
+}
+
+window.addEventListener('resize', setMobileVH, { passive: true });
+window.addEventListener('orientationchange', () => {
+  setTimeout(setMobileVH, 100);
+}, { passive: true });
+setMobileVH();
+
+/**
+ * Modal açıldığında mobilde body kaydırmasını kilitler,
+ * kapandığında geri açar (iOS Safari bounce scroll fix).
+ */
+(function patchModalScroll() {
+  const origOpen = window.openModal || function(){};
+  const origClose = window.closeModal || function(){};
+
+  // Modal açma/kapama sinyallerini body class üzerinden yönet
+  const observer = new MutationObserver(() => {
+    const hasOpenModal = document.querySelector('.mov.on') !== null;
+    if (hasOpenModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+  });
+
+  observer.observe(document.body, { subtree: true, attributeFilter: ['class'], attributes: true });
+})();
+
+/**
+ * Bottom navigation aktif öğeyi scroll ile görünür kılar.
+ * showView çağrıldığında otomatik tetiklenir.
+ */
+function syncBottomNavScroll(viewName) {
+  const nav = document.getElementById('mobileBottomNav');
+  if (!nav || window.innerWidth > 768) return;
+
+  const activeBtn = nav.querySelector('.mb-nav-item.on');
+  if (activeBtn) {
+    activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  }
+}
+
+// showView'i wrap ederek bottom nav scroll sync ve drawer kapat ekle
+const _origShowView = window.showView;
+window.showView = function(v, el) {
+  _origShowView(v, el);
+  syncBottomNavScroll(v);
+  if (v === 'calendar') {
+    updateMobileStats();
+  }
+  // Mobilede drawer açıksa otomatik kapat
+  if (window.innerWidth <= 768) {
+    closeMobileDrawer();
+  }
+};
+
+/* ─── CANLI İSTATİSTİKLER (TAKVİM MENÜSÜ MOBİL MSTAT CHIP'LERİ) ─── */
+function updateMobileStats() {
+  const msgEl = document.getElementById('mobileStatsMsg');
+  if (!msgEl) return;
+
+  const dt = selectedDate || today();
+  const isToday = dt === today();
+  const dateObj = new Date(dt + 'T12:00:00');
+  const formattedDate = dateObj.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+  const dateStr = isToday ? `Bugün (${formattedDate})` : formattedDate;
+
+  // 1. Görevler (Seçili güne ait görevler / seçilmediyse bugünün görevleri)
+  const dayTasks = (S.tasks || []).filter(t => t.due === dt || taskOccursOn(t, dt));
+  const totalTasks = dayTasks.length;
+  const doneTasks = dayTasks.filter(t => (t.completedAt?.slice(0, 10) === dt) || (t.due === dt && t.done) || (t.done && !t.due)).length;
+
+  // 2. Namazlar (Seçili güne ait vakitler)
+  const dayPrayers = (S.prayers || {})[dt] || {};
+  const mainPrayers = ['Sabah', 'Öğle', 'İkindi', 'Akşam', 'Yatsı'];
+  const donePrayers = mainPrayers.filter(p => !!dayPrayers[p]).length;
+
+  // 3. Alışkanlıklar (PC Header ile BİREBİR AYNI KONTROL MANTIĞI)
+  const habitArr = (typeof HABITS !== 'undefined' && Array.isArray(HABITS)) ? HABITS : (S.habitDefs || []);
+  const totalHabits = habitArr.length;
+  const dayHabitData = (S.habits && S.habits[dt]) ? S.habits[dt] : {};
+  const doneHabits = totalHabits > 0 ? habitArr.filter(h => !!dayHabitData[h.id]).length : 0;
+
+  msgEl.innerHTML = `
+    <div class="mstat-chip">📅 <b>${dateStr}</b></div>
+    <div class="mstat-chip ${totalTasks > 0 && doneTasks === totalTasks ? 'complete' : ''}">
+      📋 Görev: <b>${doneTasks}/${totalTasks}</b>
+    </div>
+    <div class="mstat-chip ${donePrayers === 5 ? 'complete' : ''}">
+      🕌 Namaz: <b>${donePrayers}/5</b>
+    </div>
+    ${totalHabits > 0 ? `
+    <div class="mstat-chip ${doneHabits === totalHabits ? 'complete' : ''}">
+      📊 Alışkanlık: <b>${doneHabits}/${totalHabits}</b>
+    </div>` : ''}
+  `;
+}
+
+/* ─── GÜNLÜK İÇERİK SLİDER (AYET + HADİS + DUA) ─── */
+let currentDailySlide = 0;
+let dailySlideInterval = null;
+
+function setDailySlide(index) {
+  currentDailySlide = (index + 3) % 3;
+
+  const track = document.getElementById('dailySliderTrack');
+  if (track) {
+    track.style.transform = `translateX(-${currentDailySlide * 100}%)`;
+  }
+
+  const tabs = document.querySelectorAll('.daily-tab-btn');
+  const dots = document.querySelectorAll('.daily-dot');
+
+  tabs.forEach((tab, i) => {
+    tab.classList.toggle('on', i === currentDailySlide);
+  });
+  dots.forEach((dot, i) => {
+    dot.classList.toggle('on', i === currentDailySlide);
+  });
+}
+
+function startDailySlideAutoPlay() {
+  stopDailySlideAutoPlay();
+  dailySlideInterval = setInterval(() => {
+    setDailySlide(currentDailySlide + 1);
+  }, 5000); // 5 saniyede bir otomatik geçiş
+}
+
+function stopDailySlideAutoPlay() {
+  if (dailySlideInterval) {
+    clearInterval(dailySlideInterval);
+    dailySlideInterval = null;
+  }
+}
+
+/* ─── ZİKİR MENÜSÜ SLİDER (GÜNÜN ESMASI + ZİKİR AYETİ) ─── */
+let currentZikirSlide = 0;
+let zikirSlideInterval = null;
+
+function setZikirSlide(index) {
+  currentZikirSlide = (index + 2) % 2;
+
+  const track = document.getElementById('zikirSliderTrack');
+  if (track) {
+    track.style.transform = `translateX(-${currentZikirSlide * 50}%)`;
+  }
+
+  const tabs = document.querySelectorAll('.zikir-tab-btn');
+  const dots = document.querySelectorAll('.zikir-dot');
+
+  tabs.forEach((tab, i) => {
+    tab.classList.toggle('on', i === currentZikirSlide);
+  });
+  dots.forEach((dot, i) => {
+    dot.classList.toggle('on', i === currentZikirSlide);
+  });
+}
+
+function startZikirSlideAutoPlay() {
+  stopZikirSlideAutoPlay();
+  zikirSlideInterval = setInterval(() => {
+    setZikirSlide(currentZikirSlide + 1);
+  }, 5000); // 5 saniyede bir otomatik kayar geçiş
+}
+
+function stopZikirSlideAutoPlay() {
+  if (zikirSlideInterval) {
+    clearInterval(zikirSlideInterval);
+    zikirSlideInterval = null;
+  }
+}
+
+function initDailySliderTouch() {
+  const wrapper = document.getElementById('dailySliderWrapper');
+  if (!wrapper) return;
+
+  let startX = 0;
+  let dist = 0;
+
+  wrapper.addEventListener('touchstart', (e) => {
+    startX = e.touches[0].clientX;
+    dist = 0;
+    stopDailySlideAutoPlay();
+  }, { passive: true });
+
+  wrapper.addEventListener('touchmove', (e) => {
+    const currentX = e.touches[0].clientX;
+    dist = currentX - startX;
+  }, { passive: true });
+
+  wrapper.addEventListener('touchend', () => {
+    if (dist < -40) {
+      setDailySlide(currentDailySlide + 1);
+    } else if (dist > 40) {
+      setDailySlide(currentDailySlide - 1);
+    }
+    startDailySlideAutoPlay();
+  });
+}
+
+// Slider ve Canlı İstatistik Başlat
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    initDailySliderTouch();
+    startDailySlideAutoPlay();
+    updateMobileStats();
+    applyCustomMenusUI();
+  });
+} else {
+  setTimeout(() => {
+    initDailySliderTouch();
+    startDailySlideAutoPlay();
+    updateMobileStats();
+    applyCustomMenusUI();
+    renderBadgesGrid();
+  }, 100);
+}
+
+/* ═══════════════════════════════════════════
+   POMODORO TIMER, WEB AUDIO SYNTH & BADGES ENGINE
+   ═══════════════════════════════════════════ */
+let pomoInterval = null;
+let pomoSecondsLeft = 25 * 60;
+let pomoTotalSeconds = 25 * 60;
+let pomoIsRunning = false;
+let pomoMode = 'work';
+
+/* setPomodoroMode: Ana Görev Odak Zamanlayıcısı modülü satır ~1897'de tanımlı.
+   Bu ayrı Pomodoro modülü için setPomodoroModePomo adı kullanılıyor. */
+function setPomodoroModePomo(mode, mins, btnEl) {
+  if (pomoIsRunning) togglePomodoroTimer();
+  pomoMode = mode;
+  pomoTotalSeconds = mins * 60;
+  pomoSecondsLeft = pomoTotalSeconds;
+  
+  if (btnEl) {
+    const parent = btnEl.parentElement;
+    parent.querySelectorAll('.fchip').forEach(b => b.classList.remove('on'));
+    btnEl.classList.add('on');
+  }
+
+  const lbl = document.getElementById('pomoStatusLabel');
+  if (lbl) {
+    if (mode === 'work') lbl.textContent = '💻 Çalışma Zamanı';
+    else if (mode === 'shortBreak') lbl.textContent = '☕ Kısa Mola';
+    else lbl.textContent = '🌴 Uzun Mola';
+  }
+  updatePomodoroUI();
+}
+
+function togglePomodoroTimer() {
+  const btn = document.getElementById('pomoStartBtn');
+  if (pomoIsRunning) {
+    clearInterval(pomoInterval);
+    pomoInterval = null;
+    pomoIsRunning = false;
+    if (btn) btn.textContent = '▶️ Başlat';
+  } else {
+    pomoIsRunning = true;
+    if (btn) btn.textContent = '⏸️ Duraklat';
+    pomoInterval = setInterval(() => {
+      if (pomoSecondsLeft > 0) {
+        pomoSecondsLeft--;
+        updatePomodoroUI();
+      } else {
+        clearInterval(pomoInterval);
+        pomoInterval = null;
+        pomoIsRunning = false;
+        if (btn) btn.textContent = '▶️ Başlat';
+        playPomodoroBeep();
+        toast('🎉 Pomodoro süresi doldu!', 's');
+      }
+    }, 1000);
+  }
+}
+
+function resetPomodoroTimer() {
+  if (pomoIsRunning) togglePomodoroTimer();
+  pomoSecondsLeft = pomoTotalSeconds;
+  updatePomodoroUI();
+}
+
+function updatePomodoroUI() {
+  const m = Math.floor(pomoSecondsLeft / 60);
+  const s = pomoSecondsLeft % 60;
+  const str = `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+  
+  const display = document.getElementById('pomoTimerDisplay');
+  if (display) display.textContent = str;
+
+  const ring = document.getElementById('pomoRing');
+  if (ring) {
+    const totalDash = 471.23;
+    const progress = pomoSecondsLeft / pomoTotalSeconds;
+    const offset = totalDash * (1 - progress);
+    ring.style.strokeDashoffset = offset;
+  }
+}
+
+function playPomodoroBeep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.5);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.5);
+  } catch(e){}
+}
+
+/* WEB AUDIO ACOUSTIC NATURE SOUND ENGINE (REALISTIC SOUNDSCAPES) */
+let pomoAudioCtx = null;
+let pomoActiveSynthSound = null;
+let pomoSynthGainNode = null;
+let ambientVol = 0.4;
+let soundIntervals = [];
+
+function setAmbientVolume(val) {
+  ambientVol = val / 100;
+  const label = document.getElementById('volLabel');
+  if (label) label.textContent = val + '%';
+  if (pomoSynthGainNode && pomoAudioCtx) {
+    pomoSynthGainNode.gain.setValueAtTime(ambientVol * 0.35, pomoAudioCtx.currentTime);
+  }
+}
+
+function clearSoundIntervals() {
+  soundIntervals.forEach(id => clearInterval(id));
+  soundIntervals = [];
+}
+
+function triggerRaindrop() {
+  if (!pomoAudioCtx || pomoActiveSynthSound !== 'rain') return;
+  try {
+    const osc = pomoAudioCtx.createOscillator();
+    const gain = pomoAudioCtx.createGain();
+    const freq = 600 + Math.random() * 900;
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, pomoAudioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(180 + Math.random() * 100, pomoAudioCtx.currentTime + 0.025);
+    
+    const dropVol = (0.02 + Math.random() * 0.05) * (ambientVol * 1.5);
+    gain.gain.setValueAtTime(dropVol, pomoAudioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, pomoAudioCtx.currentTime + 0.025);
+    
+    osc.connect(gain);
+    gain.connect(pomoSynthGainNode);
+    osc.start();
+    osc.stop(pomoAudioCtx.currentTime + 0.026);
+  } catch(e){}
+}
+
+function triggerBirdChirp() {
+  if (!pomoAudioCtx || pomoActiveSynthSound !== 'wind') return;
+  try {
+    const baseFreq = 2400 + Math.random() * 1400;
+    const chirpCount = 2 + Math.floor(Math.random() * 3);
+    let now = pomoAudioCtx.currentTime;
+
+    for (let i = 0; i < chirpCount; i++) {
+      const osc = pomoAudioCtx.createOscillator();
+      const gain = pomoAudioCtx.createGain();
+      osc.type = 'sine';
+
+      const startF = baseFreq + (i % 2 === 0 ? 300 : -200);
+      const endF = startF + 400 + Math.random() * 300;
+      
+      osc.frequency.setValueAtTime(startF, now);
+      osc.frequency.linearRampToValueAtTime(endF, now + 0.04);
+      osc.frequency.linearRampToValueAtTime(startF - 150, now + 0.08);
+
+      const chirpVol = (0.03 + Math.random() * 0.05) * (ambientVol * 1.8);
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.linearRampToValueAtTime(chirpVol, now + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+      osc.connect(gain);
+      gain.connect(pomoSynthGainNode);
+      osc.start(now);
+      osc.stop(now + 0.085);
+
+      now += 0.07 + Math.random() * 0.05;
+    }
+  } catch(e){}
+}
+
+function triggerNeyMelodyNote() {
+  if (!pomoAudioCtx || pomoActiveSynthSound !== 'ney') return;
+  try {
+    const neyNotes = [293.66, 329.63, 349.23, 392.00, 440.00, 523.25];
+    const targetFreq = neyNotes[Math.floor(Math.random() * neyNotes.length)];
+
+    const osc = pomoAudioCtx.createOscillator();
+    const gain = pomoAudioCtx.createGain();
+    const filter = pomoAudioCtx.createBiquadFilter();
+
+    osc.type = 'sine';
+    const now = pomoAudioCtx.currentTime;
+    const duration = 2.2 + Math.random() * 1.5;
+
+    osc.frequency.setValueAtTime(targetFreq, now);
+
+    const vibOsc = pomoAudioCtx.createOscillator();
+    const vibGain = pomoAudioCtx.createGain();
+    vibOsc.frequency.setValueAtTime(5.2, now);
+    vibGain.gain.setValueAtTime(2.8, now);
+    vibOsc.connect(vibGain);
+    vibGain.connect(osc.frequency);
+    vibOsc.start(now);
+    vibOsc.stop(now + duration);
+
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(targetFreq, now);
+    filter.Q.setValueAtTime(2.5, now);
+
+    const noteVol = (0.05 + Math.random() * 0.04) * (ambientVol * 1.6);
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.linearRampToValueAtTime(noteVol, now + 0.35);
+    gain.gain.setValueAtTime(noteVol, now + duration - 0.4);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(pomoSynthGainNode);
+
+    osc.start(now);
+    osc.stop(now + duration);
+  } catch(e){}
+}
+
+function toggleAmbientSound(type) {
+  const rainBtn = document.getElementById('btnRainSound');
+  const neyBtn = document.getElementById('btnNeySound');
+  const windBtn = document.getElementById('btnWindSound');
+  const activeEqHTML = '⏹️ <span class="eq-container"><span class="eq-bar"></span><span class="eq-bar"></span><span class="eq-bar"></span></span>';
+
+  if (pomoActiveSynthSound === type) {
+    stopAmbientSound();
+    if (rainBtn) rainBtn.innerHTML = '▶️ Oynat';
+    if (neyBtn) neyBtn.innerHTML = '▶️ Oynat';
+    if (windBtn) windBtn.innerHTML = '▶️ Oynat';
+    return;
+  }
+
+  stopAmbientSound();
+
+  if (rainBtn) rainBtn.innerHTML = '▶️ Oynat';
+  if (neyBtn) neyBtn.innerHTML = '▶️ Oynat';
+  if (windBtn) windBtn.innerHTML = '▶️ Oynat';
+
+  if (!pomoAudioCtx) pomoAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  pomoSynthGainNode = pomoAudioCtx.createGain();
+  pomoSynthGainNode.gain.setValueAtTime(ambientVol * 0.35, pomoAudioCtx.currentTime);
+  pomoSynthGainNode.connect(pomoAudioCtx.destination);
+
+  if (type === 'rain') {
+    const bufferSize = pomoAudioCtx.sampleRate * 2;
+    const buffer = pomoAudioCtx.createBuffer(1, bufferSize, pomoAudioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+    for (let i = 0; i < bufferSize; i++) {
+      let white = Math.random() * 2 - 1;
+      b0 = 0.99886 * b0 + white * 0.0555179;
+      b1 = 0.99332 * b1 + white * 0.0750759;
+      b2 = 0.96900 * b2 + white * 0.1538520;
+      b3 = 0.86650 * b3 + white * 0.3104856;
+      b4 = 0.55000 * b4 + white * 0.5329522;
+      b5 = -0.7616 * b5 - white * 0.0168980;
+      data[i] = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
+      data[i] *= 0.05;
+      b6 = white * 0.115926;
+    }
+
+    const noise = pomoAudioCtx.createBufferSource();
+    noise.buffer = buffer;
+    noise.loop = true;
+
+    const filter = pomoAudioCtx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(500, pomoAudioCtx.currentTime);
+
+    noise.connect(filter);
+    filter.connect(pomoSynthGainNode);
+    noise.start();
+
+    pomoActiveSynthSound = 'rain';
+    if (rainBtn) rainBtn.innerHTML = activeEqHTML;
+
+    // Raindrop impulses generator (every 40ms - 100ms)
+    soundIntervals.push(setInterval(() => {
+      triggerRaindrop();
+      if (Math.random() > 0.4) triggerRaindrop();
+    }, 60));
+
+  } else if (type === 'ney') {
+    // Air Breath Noise
+    const bufferSize = pomoAudioCtx.sampleRate * 2;
+    const buffer = pomoAudioCtx.createBuffer(1, bufferSize, pomoAudioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * 0.03;
+    }
+    const noise = pomoAudioCtx.createBufferSource();
+    noise.buffer = buffer;
+    noise.loop = true;
+
+    const breathFilter = pomoAudioCtx.createBiquadFilter();
+    breathFilter.type = 'bandpass';
+    breathFilter.frequency.setValueAtTime(1100, pomoAudioCtx.currentTime);
+    breathFilter.Q.setValueAtTime(6.0, pomoAudioCtx.currentTime);
+
+    noise.connect(breathFilter);
+    breathFilter.connect(pomoSynthGainNode);
+    noise.start();
+
+    pomoActiveSynthSound = 'ney';
+    if (neyBtn) neyBtn.innerHTML = activeEqHTML;
+
+    // Live Ney Melody Note Generator
+    triggerNeyMelodyNote();
+    soundIntervals.push(setInterval(() => {
+      triggerNeyMelodyNote();
+    }, 2800));
+
+  } else if (type === 'wind') {
+    const osc = pomoAudioCtx.createOscillator();
+    const filter = pomoAudioCtx.createBiquadFilter();
+
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(90, pomoAudioCtx.currentTime);
+
+    const lfoOsc = pomoAudioCtx.createOscillator();
+    const lfoGain = pomoAudioCtx.createGain();
+    lfoOsc.frequency.setValueAtTime(0.12, pomoAudioCtx.currentTime);
+    lfoGain.gain.setValueAtTime(50, pomoAudioCtx.currentTime);
+    lfoOsc.connect(lfoGain);
+    lfoGain.connect(filter.frequency);
+    lfoOsc.start();
+
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(130, pomoAudioCtx.currentTime);
+
+    osc.connect(filter);
+    filter.connect(pomoSynthGainNode);
+    osc.start();
+
+    pomoActiveSynthSound = 'wind';
+    if (windBtn) windBtn.innerHTML = activeEqHTML;
+
+    // Forest Bird Chirps Generator (every 1.8s - 3.2s)
+    soundIntervals.push(setInterval(() => {
+      triggerBirdChirp();
+    }, 2400));
+  }
+}
+
+function stopAmbientSound() {
+  clearSoundIntervals();
+  if (pomoAudioCtx) {
+    try {
+      pomoAudioCtx.close();
+    } catch(e){}
+    pomoAudioCtx = null;
+  }
+  pomoSynthGainNode = null;
+  pomoActiveSynthSound = null;
+}
+
+/* OYUNLAŞTIRMA BADGES GRID RENDER */
+function getCalculatedBadges() {
+  const sabahPrayerCount = Object.keys(S.prayers || {}).filter(day => S.prayers[day]?.sabah).length;
+  const totalZikirCount = Object.values(S.zikirCardCounts || {}).reduce((a, b) => a + (Number(b) || 0), 0)
+    + Object.values(S.zikirDone || {}).reduce((a, b) => a + (Number(b) || 0), 0);
+  const completedTaskCount = (S.tasks || []).filter(t => t.done).length;
+  const totalPagesRead = (S.books || []).reduce((acc, b) => acc + (Number(b.readPages || b.pages || 0) || 0), 0);
+  const streakCount = Number(S.streakDays || 0);
+
+  return [
+    { id: 'early_bird', title: '🥉 Erkenci Kuş', desc: '7 Gün Sabah Görevi veya Namaz Takibi', icon: '🌅', target: 7, current: sabahPrayerCount, unlocked: sabahPrayerCount >= 7 },
+    { id: 'zikir_master', title: '🥈 Zikir Ehli', desc: '1.000 Zikir ve Tesbihat Tamamlandı', icon: '📿', target: 1000, current: totalZikirCount, unlocked: totalZikirCount >= 1000 },
+    { id: 'task_hero', title: '🥇 Görev Üstadı', desc: '50 Görev Başarıyla Tamamlandı', icon: '📋', target: 50, current: completedTaskCount, unlocked: completedTaskCount >= 50 },
+    { id: 'book_reader', title: '📚 Bilge Okur', desc: '100 Sayfa Kitap Okuma Takibi', icon: '📖', target: 100, current: totalPagesRead, unlocked: totalPagesRead >= 100 },
+    { id: 'streak_champ', title: '👑 Mikat Şampiyonu', desc: '30 Günlük Kesintisiz Seri Başarısı', icon: '🔥', target: 30, current: streakCount, unlocked: streakCount >= 30 }
+  ];
+}
+
+function renderBadgesGrid() {
+  const container = document.getElementById('badgesGrid');
+  if (!container) return;
+
+  const badges = getCalculatedBadges();
+
+  container.innerHTML = badges.map(b => {
+    const pct = b.target > 0 ? Math.min(100, Math.round((b.current / b.target) * 100)) : 0;
+    return `
+      <div class="dcard" style="padding:14px; display:flex; flex-direction:column; justify-content:space-between; ${b.unlocked ? 'border:1px solid var(--gold); background:rgba(255,193,7,0.06);' : 'opacity:0.65;'}">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+          <div style="font-size:1.8rem; background:var(--sf2); width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center;">${b.unlocked ? b.icon : '🔒'}</div>
+          <div>
+            <div style="font-size:0.88rem; font-weight:800; color:${b.unlocked ? 'var(--gold)' : 'var(--tx)'}">${b.title}</div>
+            <div style="font-size:0.68rem; color:var(--tx3);">${b.unlocked ? '✅ Kilit Açıldı' : '🔒 Kilitli Rozet'}</div>
+          </div>
+        </div>
+        <div style="font-size:0.72rem; color:var(--tx2); margin-bottom:8px;">${b.desc}</div>
+        <div>
+          <div style="display:flex; justify-content:space-between; font-size:0.68rem; color:var(--tx3); margin-bottom:3px;">
+            <span>İlerleme: ${b.current}/${b.target}</span>
+            <span>%${pct}</span>
+          </div>
+          <div style="height:4px; background:var(--bd); border-radius:2px; overflow:hidden;">
+            <div style="width:${pct}%; height:100%; background:${b.unlocked ? 'var(--gold)' : 'var(--tx2)'}; border-radius:2px;"></div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
