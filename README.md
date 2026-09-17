@@ -1,7 +1,7 @@
 # ⏳ MİKAT — Vakit, İbadet & Üretkenlik Asistanı
 
-[![Canlı Yayın](https://img.shields.io/badge/Canlı%20Yayın-takvim.komutrotasi.com-3ecfb0?style=for-the-badge&logo=googlechrome&logoColor=white)](https://takvim.komutrotasi.com)
-[![PWA Ready](https://img.shields.io/badge/PWA-Çevrimdışı%20Destekli-0d1117?style=for-the-badge&logo=pwa&logoColor=white)](https://takvim.komutrotasi.com)
+[![Canlı Yayın](https://img.shields.io/badge/Canlı%20Yayın-mikat.komutrotasi.com-3ecfb0?style=for-the-badge&logo=googlechrome&logoColor=white)](https://mikat.komutrotasi.com)
+[![PWA Ready](https://img.shields.io/badge/PWA-Çevrimdışı%20Destekli-0d1117?style=for-the-badge&logo=pwa&logoColor=white)](https://mikat.komutrotasi.com)
 [![License: MIT](https://img.shields.io/badge/Lisans-MIT-blue.svg?style=for-the-badge)](LICENSE)
 [![Platform](https://img.shields.io/badge/Ekosistem-Komut%20Rotası-orange?style=for-the-badge)](https://komutrotasi.com)
 
@@ -77,7 +77,7 @@ mikat/
 ├── styles.css            # Tasarım sistemi ve responsive stiller
 ├── service-worker.js     # PWA çevrimdışı önbellekleme
 ├── manifest.json         # PWA yükleme meta verisi
-├── CNAME                 # takvim.komutrotasi.com yönlendirmesi
+├── CNAME                 # mikat.komutrotasi.com yönlendirmesi
 ├── data.json             # Statik içerik ve dua/ayet derlemesi
 ├── data/                 # Modüler JSON veri setleri (ayet, hadis, esma)
 ├── css/ & js/            # Yönetim paneli bileşenleri
@@ -88,7 +88,7 @@ mikat/
 
 ## 🌐 Canlı Yayın ve Bağlantılar
 
-* **Canlı Uygulama:** [takvim.komutrotasi.com](https://takvim.komutrotasi.com)
+* **Canlı Uygulama:** [mikat.komutrotasi.com](https://mikat.komutrotasi.com)
 * **Merkezi Portal:** [nexus.komutrotasi.com](https://nexus.komutrotasi.com)
 * **Geliştirici:** [Komut Rotası](https://github.com/komutrotasi)
 
