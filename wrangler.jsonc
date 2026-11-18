@@ -3,12 +3,13 @@
   "compatibility_date": "2026-11-18",
   "keep_vars": true,
   "workers_dev": true,
+  "preview_urls": false,
   "routes": [
     { "pattern": "mikat.komutrotasi.com", "custom_domain": true }
   ],
   "assets": {
     "directory": "./dist/site",
-    "html_handling": "none",
+    "html_handling": "auto-trailing-slash",
     "not_found_handling": "none"
   }
 }
