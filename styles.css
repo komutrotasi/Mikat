@@ -8551,4 +8551,58 @@ body.smartboard-mode .chk {
 .focus-btn-reset:hover {
   border-color: var(--rose) !important;
   color: var(--rose) !important;
-}
+}
+/* Google Drive eşitlemesi */
+.drive-header-btn[data-state="ready"] { color: var(--teal); }
+.drive-header-btn[data-state="attention"] { color: var(--gold); }
+.drive-header-btn:disabled,
+.drive-action:disabled { cursor: wait; opacity: .65; }
+
+.drive-header-status { font-size: .72rem; }
+.drive-config,
+.drive-actions {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  align-items: center;
+}
+.drive-actions { flex-wrap: wrap; }
+
+.drive-config input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--bd);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--tx);
+}
+.drive-actions .drive-action,
+.drive-config .drive-action {
+  width: auto;
+  margin: 0;
+  padding: 8px 12px;
+  flex-shrink: 0;
+}
+.drive-action[hidden],
+.drive-conflict[hidden] { display: none; }
+
+.drive-status[data-state="error"] { color: var(--rose); }
+.drive-status[data-state="ok"] { color: var(--teal); }
+.drive-conflict {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--gold);
+  border-radius: 8px;
+}
+
+@media (max-width: 768px) {
+  .top-r { display: flex !important; }
+  .top-r .drive-header-btn {
+    display: inline-flex !important;
+    min-width: 36px;
+    padding-inline: 8px;
+  }
+  .drive-header-status { display: none; }
+}

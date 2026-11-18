@@ -24,3 +24,7 @@ dist/
 
 # Uygulama çıktıları
 *.htbak
+
+# Cloudflare yerel önbelleği ve geliştirme anahtarları
+.wrangler/
+.dev.vars*

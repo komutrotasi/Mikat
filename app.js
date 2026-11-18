@@ -627,7 +627,8 @@ const safeStorage = {
     this._mem[key] = sVal;
     try {
       localStorage.setItem(key, sVal);
-    } catch (e) { }
+      return true;
+    } catch (e) { return false; }
   },
   removeItem(key) {
     delete this._mem[key];
@@ -637,45 +638,10 @@ const safeStorage = {
   }
 };
 
-const OLD_SEED_NAMES = new Set([
-  'Sabah namazını kıl', 'Öğle namazını kıl', 'İkindi namazını kıl', 'Akşam namazını kıl', 'Yatsı namazını kıl',
-  'Cuma namazına git', 'Sabah sünnetini kıl', 'Kuran tilâveti (min 1 sayfa)', 'Sabah zikirleri', 'Akşam zikirleri',
-  'Ayetel Kürsi', 'İhlas-Felak-Nas (3 kez)', '100 İstiğfar', 'Günlük Kodlama Pratiği', 'Yeni Proje Fikri',
-  'Sosyal medya paylaşımı', 'YouTube ders videosu', 'Günlük plan hazırla', 'Kitap okuma (20 sayfa)',
-  'Öğrenci notları E-okul\'a işle', 'Eşinle baş başa konuşma', 'Çocuklarla oyun / sohbet', 'Çocukların ödevlerine bak',
-  'Anne-babayı ara', 'Kitap oku (min 20 dk)', 'Podcast / sesli kitap', 'Haftalık öğrendiklerini yaz'
-]);
-
 function load() {
   try {
-    const raw = safeStorage.getItem('mikat');
+    const raw = safeStorage.getItem('mikat') || safeStorage.getItem('mikat-v6') || safeStorage.getItem('mikat-v5');
     if (raw) Object.assign(S, sanitizeState(JSON.parse(raw)));
-    else {
-      // v5/v6 → mikat geçiş
-      const old = safeStorage.getItem('mikat-v5');
-      if (old) Object.assign(S, sanitizeState(JSON.parse(old)));
-    }
-    
-    // Eski tarayıcı önbelleğinde saklanan sahte görev ve eski sayaç/istatistik verilerini temizle
-    if (!localStorage.getItem('mikat_clean_v9')) {
-      if (Array.isArray(S.tasks)) {
-        S.tasks = S.tasks.filter(t => !t.name || !OLD_SEED_NAMES.has(t.name.trim()));
-      }
-      S.zikirCardCounts = {};
-      S.prayers = {};
-      S.habits = {};
-      S.books = [];
-      S.quotes = [];
-      S.teacherTasks = [];
-      S.snippets = [];
-      S.webTools = [];
-      S.subdomains = [];
-      S.catTime = {};
-      S.timerSess = {};
-      S.customMenus = { komutrotasi: false, teacher: false, books: false };
-      localStorage.setItem('mikat_clean_v9', '1');
-      safeStorage.setItem('mikat', JSON.stringify(S));
-    }
 
     CATS = normalizeCats(S.cats || CATS);
     HABITS = normalizeHabits(S.habitDefs || HABITS);
@@ -685,7 +651,7 @@ function load() {
   }
 }
 
-function reloadFromStorage() {
+function reloadFromStorage(refreshActive = false) {
   try {
     const raw = localStorage.getItem('mikat');
     if (raw) {
@@ -696,6 +662,8 @@ function reloadFromStorage() {
       CATS = normalizeCats(S.cats || CATS);
       HABITS = normalizeHabits(S.habitDefs || HABITS);
       if (typeof render === 'function') render();
+      const activeView = refreshActive ? document.querySelector('.view.on')?.id : null;
+      if (activeView?.startsWith('v-')) window.showView(activeView.slice(2));
     }
   } catch (e) {
     console.warn('Yeniden yükleme hatası:', e);
@@ -703,17 +671,25 @@ function reloadFromStorage() {
 }
 window.mikatReloadFromStorage = reloadFromStorage;
 window.addEventListener('storage', (e) => {
-  if (e.key === 'mikat' || e.key === 'mikat_sync_trigger' || !e.key) {
+  if (!mikatHasUnsavedData && (e.key === 'mikat' || e.key === 'mikat_sync_trigger' || !e.key)) {
     reloadFromStorage();
   }
 });
+let mikatHasUnsavedData = false;
+window.mikatHasUnsavedData = () => mikatHasUnsavedData;
+
 function save() {
   try {
     S.cats = normalizeCats(CATS);
     S.habitDefs = normalizeHabits(HABITS);
     // H-02: S nesnesini yeni bir referansla değil, mevcut nesneyi güncelleyerek sakla
     Object.assign(S, sanitizeState({ ...S }));
-    safeStorage.setItem('mikat', JSON.stringify(S));
+    mikatHasUnsavedData = !safeStorage.setItem('mikat', JSON.stringify(S));
+    if (mikatHasUnsavedData) {
+      toast('Tarayıcıya kaydedilemedi. Değişiklikler şu anda açık sekmede tutuluyor.', 'e');
+      return false;
+    }
+    if (typeof window.mikatDriveNotify === 'function') window.mikatDriveNotify();
     maybeAutoBackup();
     return true;
   } catch (e) {
@@ -5991,6 +5967,7 @@ updateOnlineStatus();
 /* ═══════════════════════════════════════════
    BAŞLATMA
 ═══════════════════════════════════════════ */
+window.mikatDriveInitialState = JSON.stringify(sanitizeState({ ...S }));
 load();
 autoReset();
 seed();

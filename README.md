@@ -67,6 +67,27 @@ http://localhost:8080
 
 ---
 
+## ☁️ Google Drive ile eşitleme
+
+1. Google Cloud projenizde **Google Drive API**’yi etkinleştirin.
+2. Google Auth Platform’da izin ekranını ayarlayın. Uygulama test durumundaysa kullanacağınız Google hesabını test kullanıcısı olarak ekleyin.
+3. **Web uygulaması** türünde OAuth istemcisi oluşturun. Yetkili JavaScript kaynaklarına Mikat’ı açtığınız adresi ekleyin. Canlı adres için `https://mikat.komutrotasi.com`, yerel deneme için `http://localhost:8080` kullanın.
+4. Mikat’ta üst bardaki bulut düğmesini açın. OAuth istemci kimliğini kaydedip **Google ile bağlan** düğmesine basın. Diğer cihazda aynı istemci kimliğini ve Google hesabını kullanın.
+
+İzin geçerliyken eşitleme açılışta ve kullanım sırasında otomatik çalışır. Erişim süresi dolunca üst bardaki düğmeye basarak yeniden bağlanabilirsiniz. Her iki tarafta farklı kayıtlar varsa ve Mikat bunları güvenle birleştiremiyorsa, Ayarlar ekranında hangi kopyayı kullanacağınızı seçersiniz.
+
+Eşitleme kopyaları Drive’ın uygulamaya özel alanında sürümlü JSON olarak saklanır. Mikat, eşitleme dosyalarına ayrıca parola şifrelemesi uygulamaz. Konum ve cihaz tercihleri yüklemeye dahil edilmez. Google Cloud’daki istemci gizli anahtarını Mikat’a girmeyin.
+
+[Google OAuth web istemcisi kurulumu](https://developers.google.com/identity/gsi/web/guides/get-google-api-clientid)
+
+---
+
+## Otomatik Cloudflare yayını
+
+Mikat'ın `main` dalına push yapıldığında GitHub Actions kodlama ve Drive testlerini çalıştırır, uygulama dosyalarını paketler ve `mikat-komutrotasi` Worker'ına yükler. Yayın için Mikat deposundaki Cloudflare Secrets kayıtları ve `CLOUDFLARE_YAYIN_ETKIN=true` değişkeni gerekir. Yayın sonrası dosyalar HTTP üzerinden paketle karşılaştırılır.
+
+[İlk kurulum, günlük kullanım ve geri dönüş adımları](docs/OTOMATIK_YAYIN_KURULUMU.md)
+
 ## 📁 Proje Dizin Yapısı
 
 ```text

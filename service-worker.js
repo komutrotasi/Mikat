@@ -1,5 +1,5 @@
 // Mikat v50: Maskot optimizasyonu, 10 dk hatirlatma, mobil gizleme ve DOM duzeltmeleri
-const CACHE_NAME = 'mikat-v53';
+const CACHE_NAME = 'mikat-v56';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -9,6 +9,7 @@ const STATIC_ASSETS = [
   './app.js',
   './css/admin.css',
   './js/admin.js',
+  './js/drive-sync.js',
   './admin.html',
   './data/ayetler.json',
   './data/hadisler.json',
@@ -35,7 +36,7 @@ self.addEventListener('activate', event => {
     caches.keys()
       .then(keys => Promise.all(
         keys
-          .filter(key => key !== CACHE_NAME)
+          .filter(key => key.startsWith('mikat-') && key !== CACHE_NAME)
           .map(key => caches.delete(key))
       ))
       .then(() => self.clients.claim())
@@ -77,6 +78,8 @@ self.addEventListener('fetch', event => {
     );
     return;
   }
+
+  if (url.origin !== self.location.origin) return;
 
   // Statik dosyalar: Cache-first, fallback network
   event.respondWith(
