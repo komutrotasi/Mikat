@@ -59,7 +59,7 @@ function verify() {
   for (const name of expected) {
     const bytes = readFileSync(join(site, name));
     assert.equal(hash(bytes), manifest.files[name], 'Dosya özeti uyuşmuyor: ' + name);
-    if (name !== '_headers') assert.deepEqual(bytes, readFileSync(join(root, name)), 'Paket ve kaynak farklı: ' + name);
+    if (name !== '_headers') assert.ok(bytes.equals(readFileSync(join(root, name))), 'Paket ve kaynak farklı: ' + name);
   }
   assert.equal(readFileSync(join(site, '_headers'), 'utf8'), headers());
   runInNewContext(readFileSync(join(site, 'service-worker.js'), 'utf8') + '\nSTATIC_ASSETS.forEach(checkAsset);', {
