@@ -13,7 +13,8 @@ async function checkFile(name, expectedHash) {
   let failure;
   for (let attempt = 0; attempt < 6; attempt++) {
     try {
-      const url = new URL(name === 'index.html' ? '/' : '/' + name, origin);
+      const path = name === 'index.html' ? '/' : '/' + name.replace(/\.html$/, '');
+      const url = new URL(path, origin);
       url.searchParams.set('mikat-yayin', manifest.commit);
       const response = await fetch(url, { redirect: 'manual', cache: 'no-store', signal: AbortSignal.timeout(15000) });
       assert.equal(response.status, 200, name + ' için HTTP ' + response.status);
