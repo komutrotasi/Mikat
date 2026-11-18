@@ -55,9 +55,10 @@ async function checkLiveValidation() {
   const { createHash } = require('node:crypto');
   const content = 'Türkçe yayın örneği';
   const digest = createHash('sha256').update(content).digest('hex');
-  writeFileSync(join(liveRoot, 'dist/manifest.json'), JSON.stringify({ commit, files: { 'index.html': digest } }));
+  writeFileSync(join(liveRoot, 'dist/manifest.json'), JSON.stringify({ commit, files: { 'index.html': digest, 'admin.html': digest } }));
 
   async function exercise(correct) {
+    const paths = new Set();
     const context = {
       require(name) {
         if (name === 'node:timers/promises') return { setTimeout: async () => {} };
@@ -68,6 +69,7 @@ async function checkLiveValidation() {
       async fetch(url) {
         assert.equal(url.origin, 'https://mikat.komutrotasi.com');
         assert.equal(url.searchParams.get('mikat-yayin'), commit);
+        paths.add(url.pathname);
         return new Response(correct ? content : 'Eski içerik', { headers: {
           'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
           'X-Content-Type-Options': 'nosniff',
@@ -77,6 +79,7 @@ async function checkLiveValidation() {
     };
     await runInNewContext(liveScript, context);
     assert.equal(context.process.exitCode || 0, correct ? 0 : 1);
+    assert.deepEqual([...paths].sort(), ['/', '/admin']);
   }
 
   try {
