@@ -1,0 +1,95 @@
+name: Mikat kontrolleri ve canlı yayın
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  kontroller:
+    name: Testler ve üretim paketi
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Türkçe karakter ve kodlama kontrolü
+        run: node encoding-kontrol.js
+      - name: Drive eşitleme testleri
+        run: node tests/drive-sync.test.js
+      - name: Yayın paketinin kapsamını kontrol et
+        run: node tests/yayin-paketi.test.js
+      - name: Yayın araçlarının sözdizimi
+        run: |
+          node --check scripts/uretim-paketi-olustur.js
+          node --check scripts/canli-yayin-dogrula.js
+      - name: Üretim paketini oluştur ve doğrula
+        run: node scripts/uretim-paketi-olustur.js
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mikat-yayin-${{ github.sha }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
+  yayin:
+    name: Doğrulanmış main paketini yayımla
+    needs: kontroller
+    if: >-
+      github.repository == 'komutrotasi/Mikat' &&
+      github.event_name != 'pull_request' &&
+      github.ref == 'refs/heads/main' &&
+      vars.CLOUDFLARE_YAYIN_ETKIN == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: mikat-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          name: mikat-yayin-${{ github.sha }}
+          path: dist/
+      - name: İndirilen paketi kaynakla karşılaştır
+        run: node scripts/uretim-paketi-olustur.js --dogrula
+      - name: Yayın erişimini kontrol et
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          node - <<'NODE'
+          for (const name of ['CLOUDFLARE_ACCOUNT_ID', 'CLOUDFLARE_API_TOKEN']) {
+            if (!process.env[name]) throw new Error('GitHub Secrets kaydı eksik: ' + name);
+          }
+          NODE
+      - name: Kaynak commit hâlâ güncel main mi?
+        run: |
+          node - <<'NODE'
+          const { execFileSync } = require('node:child_process');
+          const remote = execFileSync('git', ['ls-remote', '--exit-code', 'origin', 'refs/heads/main'], { encoding: 'utf8' });
+          if (remote.trim().split(/\s+/)[0] !== process.env.GITHUB_SHA) {
+            throw new Error('main dalı ilerledi. Yeni commit için çalışan yayını izleyin.');
+          }
+          NODE
+      - name: Cloudflare Worker yayını
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: '4.158.0'
+          command: deploy --config wrangler.jsonc
+      - name: Canlı içeriği ve başlıkları doğrula
+        run: node scripts/canli-yayin-dogrula.js
