@@ -1,5 +1,5 @@
-// Mikat v57: Mobil yönetim girişi ve Drive düğmelerinin yerleşimi
-const CACHE_NAME = 'mikat-v57';
+// Mikat v58: Mobil eşitleme düğmesi sağda ve geniş dokunma alanıyla
+const CACHE_NAME = 'mikat-v58';
 const STATIC_ASSETS = [
   './',
   './index.html',

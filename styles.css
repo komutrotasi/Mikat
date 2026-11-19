@@ -8559,6 +8559,7 @@ body.smartboard-mode .chk {
 .drive-action:disabled { cursor: wait; opacity: .65; }
 
 .drive-header-status { font-size: .72rem; }
+.drive-header-mobile-label { display: none; }
 .mobile-admin-link {
   display: flex;
   align-items: center;
@@ -8611,21 +8612,43 @@ body.smartboard-mode .chk {
 }
 
 @media (max-width: 768px) {
-  .topbar { grid-template-columns: minmax(0, 1fr) 36px !important; }
-  .topbar-brand,
+  .topbar {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) clamp(100px, 32vw, 128px) !important;
+    grid-template-rows: 1fr;
+    box-sizing: border-box;
+  }
+  .topbar-brand {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+  }
   .brand > div:last-child { min-width: 0; }
   .topbar-brand .brand { min-width: 0; flex-shrink: 1 !important; }
   .brand-sub { overflow: hidden; text-overflow: ellipsis; }
-  .top-r { display: flex !important; min-width: 0; gap: 0 !important; }
+  .top-r {
+    display: flex !important;
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    justify-content: flex-end;
+    width: 100%;
+    min-width: 0;
+    gap: 0 !important;
+    flex-wrap: nowrap;
+  }
   .top-r .drive-header-btn {
     display: inline-flex !important;
     box-sizing: border-box;
-    width: 36px;
-    min-width: 36px;
-    max-width: 36px;
-    height: 36px;
-    padding: 0;
+    flex: none;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    height: 44px;
+    padding: 0 10px;
   }
+  .top-r .drive-header-btn > span:first-child { font-size: 1.1rem; }
+  .top-r .drive-header-btn .drive-header-mobile-label { display: inline; font-size: .82rem; }
   .drive-header-status { display: none; }
   .drive-config,
   .drive-actions { flex-direction: column; align-items: stretch; }
