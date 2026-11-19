@@ -8559,6 +8559,19 @@ body.smartboard-mode .chk {
 .drive-action:disabled { cursor: wait; opacity: .65; }
 
 .drive-header-status { font-size: .72rem; }
+.mobile-admin-link {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  color: var(--tx);
+}
+.mobile-drawer-menu { min-height: 0; }
+.mobile-drawer-menu > * { flex-shrink: 0; }
+#driveSyncBox,
+#driveSyncBox .set-row-col,
+.drive-conflict { min-width: 0; }
+#driveAccount,
+.drive-status { overflow-wrap: anywhere; }
 .drive-config,
 .drive-actions {
   display: flex;
@@ -8598,11 +8611,37 @@ body.smartboard-mode .chk {
 }
 
 @media (max-width: 768px) {
-  .top-r { display: flex !important; }
+  .topbar { grid-template-columns: minmax(0, 1fr) 36px !important; }
+  .topbar-brand,
+  .brand > div:last-child { min-width: 0; }
+  .topbar-brand .brand { min-width: 0; flex-shrink: 1 !important; }
+  .brand-sub { overflow: hidden; text-overflow: ellipsis; }
+  .top-r { display: flex !important; min-width: 0; gap: 0 !important; }
   .top-r .drive-header-btn {
     display: inline-flex !important;
+    box-sizing: border-box;
+    width: 36px;
     min-width: 36px;
-    padding-inline: 8px;
+    max-width: 36px;
+    height: 36px;
+    padding: 0;
   }
   .drive-header-status { display: none; }
+  .drive-config,
+  .drive-actions { flex-direction: column; align-items: stretch; }
+  .drive-config input {
+    box-sizing: border-box;
+    width: 100%;
+    font-size: 16px;
+  }
+  .drive-config .drive-action,
+  .drive-actions .drive-action {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    flex-shrink: 1;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
 }

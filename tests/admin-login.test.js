@@ -91,3 +91,39 @@ test('mobil yönetim menüsü tek kez çalışır ve panel seçilince kapanır',
   assert.equal(dev.ids.get('admin-mobile-backdrop').style.display, 'none');
   assert.equal(dev.ids.get('tab-gorevler').classList.contains('active'), true);
 });
+
+test('çevrimdışı /admin adresi ve girişin CSS/JS dosyaları önbellekten açılır', async () => {
+  const origin = 'https://mikat.komutrotasi.com';
+  const cached = new Set();
+  const events = {};
+  const context = createContext({
+    URL,
+    self: {
+      location: { origin, href: origin + '/service-worker.js' },
+      addEventListener(name, handler) { events[name] = handler; },
+      skipWaiting() {}
+    },
+    caches: {
+      async open() { return { async addAll(paths) { paths.forEach(path => cached.add(new URL(path, origin).href)); } }; },
+      async match(request) {
+        const url = typeof request === 'string' ? request : request.url;
+        return cached.has(url) ? { status: 200, url } : undefined;
+      }
+    },
+    async fetch() { throw new Error('Çevrimdışı'); }
+  });
+  runInContext(readFileSync(join(__dirname, '../service-worker.js'), 'utf8'), context);
+  let installed;
+  events.install({ waitUntil(promise) { installed = promise; } });
+  await installed;
+  const dependencies = [...html.matchAll(/(?:src|href)="((?:css|js)\/[^\"]+)"/g)].map(match => match[1]);
+  assert.equal(dependencies.length, 2);
+  for (const path of ['/admin', '/admin/', ...dependencies]) {
+    let response;
+    events.fetch({
+      request: { url: new URL(path, origin).href, mode: path.startsWith('/admin') ? 'navigate' : 'cors' },
+      respondWith(promise) { response = promise; }
+    });
+    assert.equal((await response).status, 200, path + ' çevrimdışı açılmalı.');
+  }
+});

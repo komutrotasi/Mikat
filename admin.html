@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous">
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/admin.css?v=3">
+    <link rel="stylesheet" href="css/admin.css">
 </head>
 <body>
     <!-- GİRİŞ EKRANI -->
@@ -19,7 +19,7 @@
         <div class="glow-orb orb-1"></div>
         <div class="glow-orb orb-2"></div>
         
-        <div class="login-box glass-panel">
+        <form class="login-box glass-panel" id="admin-login-form">
             <div class="login-logo-container" style="background: transparent; border: none; box-shadow: none; width: 80px; height: 80px; margin: 0 auto 20px;">
                 <img src="mikat-logo.png" alt="Mikat Logo" onerror="this.src='assets/mascot.png';" style="width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 4px 12px rgba(59, 130, 246, 0.4));">
             </div>
@@ -27,13 +27,13 @@
             <p>Sisteme erişmek için PIN kodunuzu girin.</p>
             <div class="input-wrapper">
                 <i class="fa-solid fa-lock input-icon"></i>
-                <input type="password" id="pin-input" placeholder="••••••" autocomplete="current-password">
+                <input type="password" id="pin-input" placeholder="••••••" aria-label="Yönetici PIN kodu" inputmode="numeric" enterkeyhint="go" autocomplete="current-password" required>
             </div>
-            <button id="btn-login" class="btn-glow">
+            <button type="submit" id="btn-login" class="btn-glow">
                 <span>Giriş Yap</span> <i class="fa-solid fa-arrow-right"></i>
             </button>
-            <div id="login-error" class="error-msg"></div>
-        </div>
+            <div id="login-error" class="error-msg" role="status" aria-live="polite"></div>
+        </form>
     </div>
 
     <!-- YÖNETİM PANELİ -->
@@ -530,6 +530,6 @@
         </div>
     </div>
 
-    <script src="js/admin.js?v=3"></script>
+    <script src="js/admin.js"></script>
 </body>
 </html>

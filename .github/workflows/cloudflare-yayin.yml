@@ -26,6 +26,8 @@ jobs:
         run: node encoding-kontrol.js
       - name: Drive eşitleme testleri
         run: node tests/drive-sync.test.js
+      - name: Yönetim paneli giriş ve mobil menü testleri
+        run: node tests/admin-login.test.js
       - name: Yayın paketinin kapsamını kontrol et
         run: node tests/yayin-paketi.test.js
       - name: Yayın araçlarının sözdizimi

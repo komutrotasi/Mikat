@@ -1,5 +1,5 @@
-// Mikat v50: Maskot optimizasyonu, 10 dk hatirlatma, mobil gizleme ve DOM duzeltmeleri
-const CACHE_NAME = 'mikat-v56';
+// Mikat v57: Mobil yönetim girişi ve Drive düğmelerinin yerleşimi
+const CACHE_NAME = 'mikat-v57';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -81,9 +81,15 @@ self.addEventListener('fetch', event => {
 
   if (url.origin !== self.location.origin) return;
 
+  // Cloudflare /admin adresini admin.html dosyasından sunar. Çevrimdışı da aynı kopyayı kullan.
+  const adminPath = new URL('./admin', self.location.href).pathname;
+  const cachedRequest = event.request.mode === 'navigate' && url.pathname.replace(/\/$/, '') === adminPath
+    ? new URL('./admin.html', self.location.href).href
+    : event.request;
+
   // Statik dosyalar: Cache-first, fallback network
   event.respondWith(
-    caches.match(event.request)
+    caches.match(cachedRequest)
       .then(cached => cached || fetch(event.request))
   );
 });

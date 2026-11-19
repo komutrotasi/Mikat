@@ -7,17 +7,13 @@ let activeKomutSubTab = 'subdomains';
 
 document.addEventListener('DOMContentLoaded', () => {
     // DOM Elements
-    const loginBtn = document.getElementById('btn-login');
+    const loginForm = document.getElementById('admin-login-form');
     const pinInput = document.getElementById('pin-input');
     const errorMsg = document.getElementById('login-error');
-    const logoutBtn = document.getElementById('btn-logout');
-
-    if (loginBtn) loginBtn.addEventListener('click', checkPin);
-    if (pinInput) {
-        pinInput.addEventListener('keypress', (e) => {
-            if(e.key === 'Enter') checkPin();
-        });
-    }
+    if (loginForm) loginForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        checkPin();
+    });
 
     function checkPin() {
         if (loginLockout) {
@@ -68,22 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
         initAdminDashboard();
     }
 
-    // Tabs Logic
-    const navItems = document.querySelectorAll('.nav-item[data-target]');
-    const tabPanes = document.querySelectorAll('.tab-pane');
-
-    navItems.forEach(item => {
-        item.addEventListener('click', (e) => {
-            e.preventDefault();
-            const target = item.getAttribute('data-target');
-            if (!target) return;
-            switchAdminNav(target);
-
-            if (window.innerWidth <= 768 && sidebar && sidebar.classList.contains('mobile-active')) {
-                toggleMobileMenu();
-            }
-        });
-    });
+    // Sekme bağlantıları switchAdminNav üzerinden tek kez işlenir.
 });
 
 /* ════════════════════════════════════════════════════════════

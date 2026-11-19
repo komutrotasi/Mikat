@@ -39,7 +39,7 @@
 
   <!-- ═══ ÜST BAR ═══ -->
   <div class="topbar">
-    <div style="display:flex; align-items:center; gap:8px;">
+    <div class="topbar-brand" style="display:flex; align-items:center; gap:8px;">
       <!-- Mobil Hamburger Butonu (sadece < 768px'de sol tarafta görünür) -->
       <button class="tbtn hamburger-btn" id="hamburgerBtn" onclick="toggleMobileDrawer()" title="Menü"
         aria-label="Menü" style="display:none;">☰</button>
@@ -109,6 +109,8 @@
       <button class="menu-item-vertical" data-view="teacher" style="display: none;" onclick="showView('teacher', this); closeMobileDrawer();">🏫 Bilişimci Hocam</button>
 
       <button class="menu-item-vertical" onclick="openSettings(); closeMobileDrawer();" style="margin-top:8px;">⚙️ Ayarlar &amp; Sistem</button>
+
+      <a href="admin.html" class="menu-item-vertical mobile-admin-link">🔐 Yönetim Paneli</a>
 
       <!-- Mobil Hızlı Aksiyon Butonları (Header Ortak Standartları) -->
       <div class="drawer-actions-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 10px;">
