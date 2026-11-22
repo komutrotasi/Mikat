@@ -30,7 +30,7 @@ try {
   run('--dogrula');
   const manifest = JSON.parse(readFileSync(join(fixture, 'dist/manifest.json'), 'utf8'));
   assert.equal(manifest.commit, commit);
-  assert.equal(Object.keys(manifest.files).length, 23);
+  assert.equal(Object.keys(manifest.files).length, 24);
   assert.ok(manifest.files['js/drive-sync.js']);
   assert.ok(!manifest.files['.env'] && !manifest.files['.wrangler/test.json']);
 

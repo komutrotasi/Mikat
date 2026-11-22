@@ -23,13 +23,15 @@ function storage(seed = {}) {
 function fakeDrive() {
   const files = new Map();
   const uploads = [];
-  return {
-    files, uploads,
+  const requests = [];
+  const drive = {
+    files, uploads, requests, profile: { sub: 'test-account', email: 'example@example.test' },
     async fetch(url, options) {
+      requests.push(url);
       const request = new URL(url);
       let data;
       if (request.pathname.endsWith('/userinfo')) {
-        data = { sub: 'test-account', email: 'example@example.test' };
+        data = drive.profile;
       } else if (options.method === 'POST') {
         assert.equal(request.pathname, '/upload/drive/v3/files');
         const [, metadata, content] = options.body.split('\r\n\r\n');
@@ -50,6 +52,8 @@ function fakeDrive() {
       return { ok: true, status: 200, async json() { return structuredClone(data); } };
     }
   };
+
+  return drive;
 }
 
 function fakeElement() {
@@ -74,12 +78,14 @@ function device(drive, data = defaults, existing) {
   const events = {};
   const clock = { time: 1000000 };
   const window = {
+    mikatGoogle: existing?.googleProvider,
     location: { protocol: existing?.protocol || 'http:' },
     mikatDriveInitialState: JSON.stringify(defaults),
     mikatReloadFromStorage() {},
     renderSettings() {},
     openSettings() {},
     addEventListener(name, handler) { events[name] = handler; },
+    dispatchEvent(event) { events[event.type]?.(event); },
     google: {
       accounts: {
         oauth2: {
@@ -97,6 +103,7 @@ function device(drive, data = defaults, existing) {
   const navigator = { onLine: true };
   runInNewContext(script, {
     window, localStorage, sessionStorage, navigator, URLSearchParams, AbortController,
+    CustomEvent: class { constructor(type, options) { this.type = type; this.detail = options?.detail; } },
     crypto: webcrypto, fetch: drive.fetch, setInterval() {}, setTimeout() {}, clearTimeout() {},
     Date: class extends Date { static now() { return clock.time; } },
     document: { getElementById, createElement: fakeElement, addEventListener() {} }
@@ -123,6 +130,70 @@ test('doğrudan HTML dosyası açıldığında Google penceresi yerine web adres
 
 const settle = () => new Promise(setImmediate);
 const task = (id, name) => ({ id, name });
+
+function accountProvider(signedIn = false) {
+  return {
+    current: signedIn ? { sub: 'test-account', email: 'example@example.test' } : null,
+    opened: 0,
+    clientId() { return clientId; },
+    account() { return this.current; },
+    open() { this.opened++; }
+  };
+}
+
+test('hazır Google istemcisiyle ilk giriş yalnızca hesap ekranını açar; Drive izni istemez', async () => {
+  const drive = fakeDrive();
+  const googleProvider = accountProvider();
+  const dev = device(drive, defaults, { localStorage: storage({ mikat: JSON.stringify(defaults) }), googleProvider });
+  assert.equal(dev.status, 'Google ile giriş yap');
+  await dev.click();
+  assert.equal(googleProvider.opened, 1);
+  assert.equal(dev.popups.length, 0);
+  assert.equal(drive.requests.length, 0);
+});
+
+test('Google hesabı seçmek ve üst düğmeyi açmak eşitlemez; Drive düğmesi ayrıca izin ister', async () => {
+  const drive = fakeDrive();
+  const googleProvider = accountProvider(true);
+  const dev = device(drive, defaults, { localStorage: storage({ mikat: JSON.stringify(defaults) }), googleProvider });
+  await dev.click();
+  assert.equal(drive.requests.length, 0);
+  assert.equal(dev.popups.length, 0);
+  await dev.click('driveSyncNowBtn');
+  assert.equal(dev.popups.length, 1);
+  assert.equal(dev.popups[0].hint, 'example@example.test');
+  assert.equal(drive.uploads.length, 1);
+});
+
+test('Google girişinden farklı Drive hesabı seçilirse görevler yüklenmez', async () => {
+  const drive = fakeDrive();
+  drive.profile = { sub: 'other-account', email: 'other@example.test' };
+  const googleProvider = accountProvider(true);
+  const dev = device(drive, defaults, { googleProvider });
+  await dev.click('driveSyncNowBtn');
+  assert.equal(drive.uploads.length, 0);
+  assert.equal(dev.localStorage.getItem('mikat_drive_account'), null);
+  assert.equal(dev.sessionStorage.getItem('mikat_drive_token'), null);
+  assert.match(dev.feedback, /giriş yaptığınız Google hesabını seçin/);
+});
+
+test('Google çıkışı Drive erişimini durdurur; yerel görevleri ve uzak kopyayı korur', async () => {
+  const drive = fakeDrive();
+  const googleProvider = accountProvider(true);
+  const dev = device(drive, { ...defaults, tasks: [task('a', 'Korunan görev')] }, { googleProvider });
+  await dev.click('driveSyncNowBtn');
+  assert.equal(drive.uploads.length, 1);
+  const count = drive.requests.length;
+  googleProvider.current = null;
+  dev.events['mikat:google-account']({ detail: { account: null } });
+  dev.events.online();
+  await settle();
+  assert.equal(dev.sessionStorage.getItem('mikat_drive_token'), null);
+  assert.equal(dev.localStorage.getItem('mikat_drive_account'), null);
+  assert.equal(dev.data.tasks[0].name, 'Korunan görev');
+  assert.equal(drive.files.size, 1);
+  assert.equal(drive.requests.length, count);
+});
 
 test('ilk tıklama Google yetkisini alır ve eşitler; geçerli yetkiyle açılış otomatik çalışır', async () => {
   const drive = fakeDrive();

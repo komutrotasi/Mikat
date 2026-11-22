@@ -67,18 +67,22 @@ http://localhost:8080
 
 ---
 
-## ☁️ Google Drive ile eşitleme
+## Google hesabıyla giriş ve isteğe bağlı Drive
 
-1. Google Cloud projenizde **Google Drive API**’yi etkinleştirin.
-2. Google Auth Platform’da izin ekranını ayarlayın. Uygulama test durumundaysa kullanacağınız Google hesabını test kullanıcısı olarak ekleyin.
-3. **Web uygulaması** türünde OAuth istemcisi oluşturun. Yetkili JavaScript kaynaklarına Mikat’ı açtığınız adresi ekleyin. Canlı adres için `https://mikat.komutrotasi.com`, yerel deneme için `http://localhost:8080` kullanın.
-4. Mikat’ta üst bardaki bulut düğmesini açın. OAuth istemci kimliğini kaydedip **Google ile bağlan** düğmesine basın. Diğer cihazda aynı istemci kimliğini ve Google hesabını kullanın.
+Mikat'ı hesap açmadan kullanabilirsiniz. Normal kullanıcıların Google Cloud ayarı yapması veya istemci kimliği girmesi gerekmez.
 
-İzin geçerliyken eşitleme açılışta ve kullanım sırasında otomatik çalışır. Erişim süresi dolunca üst bardaki düğmeye basarak yeniden bağlanabilirsiniz. Her iki tarafta farklı kayıtlar varsa ve Mikat bunları güvenle birleştiremiyorsa, Ayarlar ekranında hangi kopyayı kullanacağınızı seçersiniz.
+1. Üst bardaki **Giriş yap** düğmesini veya Ayarlar → **Google hesabı** bölümünü açın.
+2. Hazırlanan resmî **Google ile oturum açın** düğmesinden hesabınızı seçin. Bu adım görevlerinizi Drive'a göndermez.
+3. İsterseniz **Drive eşitlemesini aç** düğmesine basıp aynı Google hesabıyla uygulama verisi erişimine izin verin.
+4. **Bu cihazda çıkış yap**, Google hesap görünümünü ve Drive erişimini bu tarayıcıda kapatır; yerel görevleri ve Drive yedeklerini silmez.
 
-Eşitleme kopyaları Drive’ın uygulamaya özel alanında sürümlü JSON olarak saklanır. Mikat, eşitleme dosyalarına ayrıca parola şifrelemesi uygulamaz. Konum ve cihaz tercihleri yüklemeye dahil edilmez. Google Cloud’daki istemci gizli anahtarını Mikat’a girmeyin.
+Hesap görünümü bu sekmenin geçici depolamasında tutulur. Google hizmeti kullanıcı giriş/bağlantı eyleminden önce sırf istemci kimliği kayıtlı olduğu için yüklenmez. Önceden açılmış ve geçerli Drive yetkisi varsa eski otomatik eşitleme korunur. Yetki süresi dolduğunda yeniden bağlantı gerekebilir.
 
-[Google OAuth web istemcisi kurulumu](https://developers.google.com/identity/gsi/web/guides/get-google-api-clientid)
+Drive eşitlemesi mevcut sürümlü JSON biçimini kullanır; henüz ayrıca kullanıcı parolasıyla şifrelenmez. Konum ve cihaz tercihleri yüklemeye dahil edilmez. Güvenle birleştirilemeyen kopyalar kullanıcı seçimine bırakılır. Google girişi yönetim paneline yetki vermez; panelin yerel PIN kilidi ayrıdır.
+
+Kendi Google Cloud projesini kullanmış kişiler için eski istemci ayarı korunur. İsteğe bağlı **Kişisel Google projesi kullan** bölümünü boş bırakıp kaydetmek standart Mikat istemcisine döner; farklı projelerdeki Drive verileri kendiliğinden taşınmaz.
+
+[İşletmeci kurulumu, veri akışı ve kullanıcı kabul kontrolü](docs/GOOGLE_ILE_GIRIS.md)
 
 ---
 

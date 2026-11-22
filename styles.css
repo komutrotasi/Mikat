@@ -8603,6 +8603,25 @@ body.smartboard-mode .chk {
 
 .drive-status[data-state="error"] { color: var(--rose); }
 .drive-status[data-state="ok"] { color: var(--teal); }
+.google-provider {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 4px 0;
+}
+.google-provider[hidden] { display: none; }
+.google-provider[aria-busy="true"] { pointer-events: none; opacity: .65; }
+#googleAccountBox, #googleAccountBox .set-row-col { min-width: 0; }
+#googleAccount { overflow-wrap: anywhere; }
+.drive-advanced {
+  width: 100%;
+  min-width: 0;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--bd);
+}
+.drive-advanced summary { cursor: pointer; font-size: .85rem; }
+.drive-advanced .drive-config { margin-top: 8px; }
 .drive-conflict {
   display: grid;
   gap: 8px;

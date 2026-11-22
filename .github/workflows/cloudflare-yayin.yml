@@ -24,6 +24,8 @@ jobs:
           node-version: '22'
       - name: Türkçe karakter ve kodlama kontrolü
         run: node encoding-kontrol.js
+      - name: Google hesap girişi testleri
+        run: node tests/google-account.test.js
       - name: Drive eşitleme testleri
         run: node tests/drive-sync.test.js
       - name: Yönetim paneli giriş ve mobil menü testleri

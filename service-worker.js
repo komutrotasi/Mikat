@@ -1,5 +1,5 @@
-// Mikat v58: Mobil eşitleme düğmesi sağda ve geniş dokunma alanıyla
-const CACHE_NAME = 'mikat-v58';
+// Mikat v59: Google hesabıyla giriş ve isteğe bağlı Drive eşitlemesi
+const CACHE_NAME = 'mikat-v59';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -10,6 +10,7 @@ const STATIC_ASSETS = [
   './css/admin.css',
   './js/admin.js',
   './js/drive-sync.js',
+  './js/google-account.js',
   './admin.html',
   './data/ayetler.json',
   './data/hadisler.json',

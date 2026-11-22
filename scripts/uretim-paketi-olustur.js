@@ -15,7 +15,7 @@ assert.ok(commit === null || /^[a-f0-9]{40}$/.test(commit), 'Geçersiz kaynak co
 const files = [
   'index.html', 'admin.html', 'app.js', 'styles.css', 'service-worker.js',
   'manifest.json', 'favicon.ico', 'mikat-logo.png', 'data.json',
-  'css/admin.css', 'js/admin.js', 'js/drive-sync.js', 'assets/mascot.png',
+  'css/admin.css', 'js/admin.js', 'js/drive-sync.js', 'js/google-account.js', 'assets/mascot.png',
   'icons/apple-touch-icon.png', 'icons/icon-192.png', 'icons/icon-512.png',
   'data/ayetler.json', 'data/hadisler.json', 'data/dualar.json',
   'data/esmalar.json', 'data/namaz_ayetleri.json', 'data/zikirler.json'

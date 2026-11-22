@@ -67,8 +67,8 @@
     <div class="top-r" style="display:flex; align-items:center; gap:6px;">
       <button type="button" class="tbtn drive-header-btn" id="driveHeaderBtn" aria-label="Drive ile eşitle">
         <span aria-hidden="true">☁️</span>
-        <span class="drive-header-status" id="driveHeaderStatus" aria-live="polite">Drive ile eşitle</span>
-        <span class="drive-header-mobile-label" aria-hidden="true">Eşitle</span>
+        <span class="drive-header-status" id="driveHeaderStatus" aria-live="polite">Google ile giriş yap</span>
+        <span class="drive-header-mobile-label" id="driveHeaderMobileLabel" aria-hidden="true">Giriş yap</span>
       </button>
       <button class="tbtn" id="smartboardBtn" onclick="toggleSmartboardMode()"
         title="Akıllı Tahta Modu (Yazı/Buton Büyüt)" style="width:36px; height:36px; font-size:1.05rem;">🖥️</button>
@@ -1705,21 +1705,39 @@
         
         <!-- SEKME 1: GÖRÜNÜM & BİLDİRİM -->
         <div id="setTab-general" class="settings-tab-content">
+          <div class="set-group" id="googleAccountBox">
+            <div class="set-group-title">👤 Google hesabı</div>
+            <div class="set-row-col">
+              <div class="set-row-title" id="googleAccount">Google hesabıyla giriş yapılmadı</div>
+              <div class="set-row-sub">Giriş yapmak isteğe bağlıdır. Hesabınızı seçmek görevlerinizi Drive’a göndermez; eşitlemeyi aşağıdan ayrıca açabilirsiniz. Google şifreniz Mikat’a verilmez.</div>
+              <div class="drive-actions">
+                <button type="button" class="cbtn drive-action" id="googlePrepareBtn">Google ile giriş yap</button>
+                <button type="button" class="cbtn2 drive-action" id="googleSignOutBtn" hidden>Bu cihazda çıkış yap</button>
+              </div>
+              <div class="google-provider" id="googleSignInButton" hidden></div>
+              <div class="set-row-sub drive-status" id="googleAccountStatus" role="status" aria-live="polite"></div>
+              <div class="set-row-sub">Hesap bilgisi yalnızca bu sekmede tutulur. Giriş yapmadan da Mikat’ı kullanabilirsiniz.</div>
+            </div>
+          </div>
           <div class="set-group" id="driveSyncBox">
             <div class="set-group-title">☁️ Google Drive eşitleme</div>
             <div class="set-row-col">
               <div class="set-row-title" id="driveAccount">Bağlı değil</div>
-              <div class="set-row-sub">Görevler ve takip kayıtları Drive’ın uygulamaya özel alanına gönderilir. Konum, şehir, tema ve bildirim tercihi bu cihazda kalır.</div>
-              <label class="set-row-sub" for="driveClientId">Google OAuth istemci kimliği</label>
-              <div class="drive-config">
-                <input type="text" id="driveClientId" placeholder="…apps.googleusercontent.com"
-                  spellcheck="false" autocomplete="off" autocapitalize="off">
-                <button type="button" class="cbtn2 drive-action" id="driveConfigBtn">Kaydet</button>
-              </div>
+              <div class="set-row-sub">Eşitlemeyi açarsanız görev ve takip kayıtlarınız kendi Drive hesabınızın uygulama alanına gönderilir. Konum, şehir, tema ve bildirim tercihi bu cihazda kalır. Mevcut Drive yedeğine ayrıca parola şifrelemesi uygulanmaz.</div>
               <div class="drive-actions">
-                <button type="button" class="cbtn drive-action" id="driveSyncNowBtn">Google ile bağlan</button>
+                <button type="button" class="cbtn drive-action" id="driveSyncNowBtn">Drive eşitlemesini aç</button>
                 <button type="button" class="cbtn2 drive-action" id="driveDisconnectBtn" hidden>Bu cihazda bağlantıyı kes</button>
               </div>
+              <details class="drive-advanced">
+                <summary>Kişisel Google projesi kullan</summary>
+                <p class="set-row-sub">Normal kullanımda bu ayarı yapmanız gerekmez. Kendi Google Cloud projenizi kullanıyorsanız web istemci kimliğinizi girebilirsiniz. Boş bırakıp kaydetmek Mikat’ın standart bağlantısına döner.</p>
+                <label class="set-row-sub" for="driveClientId">Web istemci kimliği (isteğe bağlı)</label>
+                <div class="drive-config">
+                  <input type="text" id="driveClientId" placeholder="…apps.googleusercontent.com"
+                    spellcheck="false" autocomplete="off" autocapitalize="off">
+                  <button type="button" class="cbtn2 drive-action" id="driveConfigBtn">Kaydet</button>
+                </div>
+              </details>
               <div class="set-row-sub drive-status" id="driveStatus" role="status"></div>
               <div class="drive-conflict" id="driveConflict" hidden>
                 <div class="set-row-title">Eşitlemede farklı kopyalar bulundu</div>
@@ -2471,6 +2489,7 @@ Alışverişe çık #aile" style="font-family:inherit; font-size:0.85rem; resize
   </nav>
 
   <script defer src="app.js"></script>
+  <script defer src="js/google-account.js"></script>
   <script defer src="js/drive-sync.js"></script>
 </body>
 

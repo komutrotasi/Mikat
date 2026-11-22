@@ -2,7 +2,7 @@
   'use strict';
 
   const DRIVE = 'https://www.googleapis.com/drive/v3';
-  const SCOPES = ['https://www.googleapis.com/auth/drive.appdata', 'https://www.googleapis.com/auth/userinfo.email'];
+  const SCOPES = ['openid', 'https://www.googleapis.com/auth/drive.appdata', 'https://www.googleapis.com/auth/userinfo.email'];
   const SNAPSHOT = 'mikat-senkron-v2.json';
   const LEGACY = 'mikat-yedek.json';
   const CLIENT = 'mikat_drive_client_id';
@@ -41,6 +41,15 @@
     } catch {
       return null;
     }
+  }
+
+  function configuredClientId() {
+    return window.mikatGoogle?.clientId() || read(CLIENT);
+  }
+
+  function matchesSignedInAccount(account) {
+    const signedIn = window.mikatGoogle?.account();
+    return !signedIn || account?.key === configuredClientId() + ':' + signedIn.sub;
   }
 
   function project(data) {
@@ -89,7 +98,7 @@
 
   function validGrant() {
     const account = readJson(ACCOUNT);
-    return grant && account?.key === grant.account.key && grant.clientId === read(CLIENT) &&
+    return grant && account?.key === grant.account.key && grant.clientId === configuredClientId() && matchesSignedInAccount(account) &&
       Date.now() < grant.expiresAt ? grant : null;
   }
 
@@ -102,9 +111,11 @@
   function render() {
     const account = readJson(ACCOUNT);
     const clientId = read(CLIENT) || '';
+    const googleAccount = window.mikatGoogle?.account();
     const cursor = activeCursor();
     const last = cursor?.time ? new Date(cursor.time).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' }) : '';
     let summary = 'Drive ile eşitle';
+    if (window.mikatGoogle && !account) summary = googleAccount ? 'Drive’ı bağla' : 'Google ile giriş yap';
     if (pending) summary = 'Eşitleniyor…';
     else if (filePage) summary = 'Drive için web adresini kullan';
     else if (!navigator.onLine) summary = 'Çevrimdışı';
@@ -116,8 +127,10 @@
     header.disabled = Boolean(pending);
     header.dataset.state = pending ? 'busy' : conflict || kind === 'error' ? 'attention' : validGrant() ? 'ready' : '';
     header.title = summary;
-    header.setAttribute('aria-label', 'Google Drive. ' + summary);
+    header.setAttribute('aria-label', (window.mikatGoogle && !account ? 'Google hesabı. ' : 'Google Drive. ') + summary);
     document.getElementById('driveHeaderStatus').textContent = summary;
+    const mobileLabel = document.getElementById('driveHeaderMobileLabel');
+    if (mobileLabel) mobileLabel.textContent = window.mikatGoogle && !account && !googleAccount ? 'Giriş yap' : 'Eşitle';
     document.getElementById('driveAccount').textContent = account ? 'Google hesabı: ' + account.email : 'Bağlı değil';
     const input = document.getElementById('driveClientId');
     if (document.activeElement !== input) input.value = clientId;
@@ -125,7 +138,7 @@
     document.getElementById('driveConfigBtn').disabled = input.disabled;
     const sync = document.getElementById('driveSyncNowBtn');
     sync.disabled = filePage || Boolean(pending);
-    sync.textContent = !account ? 'Google ile bağlan' : validGrant() ? 'Şimdi eşitle' : 'Yeniden bağlan ve eşitle';
+    sync.textContent = !account ? 'Drive eşitlemesini aç' : validGrant() ? 'Şimdi eşitle' : 'Yeniden bağlan ve eşitle';
     const disconnect = document.getElementById('driveDisconnectBtn');
     disconnect.hidden = !account;
     disconnect.disabled = Boolean(pending);
@@ -163,6 +176,10 @@
   }
 
   function prepareGoogle() {
+    if (window.mikatGoogle) {
+      window.mikatGoogle.load().catch(error => updateStatus(error.message, 'error'));
+      return;
+    }
     if (window.google?.accounts?.oauth2 || gisLoading) return;
     const script = document.createElement('script');
     gisLoading = script;
@@ -179,14 +196,17 @@
 
   function authorize(clientId) {
     const oauth = window.google?.accounts?.oauth2;
-    const hint = readJson(ACCOUNT)?.email || read('mikat_drive_email');
+    const hint = window.mikatGoogle?.account()?.email || readJson(ACCOUNT)?.email || read('mikat_drive_email');
     return new Promise((resolve, reject) => {
       const client = oauth.initTokenClient({
         client_id: clientId,
         scope: SCOPES.join(' '),
+        include_granted_scopes: false,
         callback(response) {
           if (!response.access_token || !oauth.hasGrantedAllScopes(response, ...SCOPES)) {
-            reject(new Error('Google Drive izni verilmedi. İzin ekranını kontrol edin.'));
+            reject(new Error(response.error === 'access_denied'
+              ? 'Drive izni verilmedi. Mikat’ı bu cihazda kullanmaya devam edebilirsiniz.'
+              : 'Google Drive izni verilmedi. İzin ekranını kontrol edin.'));
             return;
           }
           resolve(response);
@@ -226,7 +246,9 @@
     const token = response.access_token;
     const profile = await api('https://www.googleapis.com/oauth2/v3/userinfo', token);
     if (!profile.email) throw new Error('Google hesabı doğrulanamadı.');
-    if (operation.signal.aborted || clientId !== read(CLIENT)) throw new Error('Drive ayarları değişti.');
+    const signedIn = window.mikatGoogle?.account();
+    if (signedIn && profile.sub !== signedIn.sub) throw new Error('Drive için giriş yaptığınız Google hesabını seçin. Cihazdaki kayıtlar korundu.');
+    if (operation.signal.aborted || clientId !== configuredClientId()) throw new Error('Drive ayarları değişti.');
     const account = { key: clientId + ':' + (profile.sub || profile.email.toLowerCase()), email: profile.email };
     localStorage.setItem(ACCOUNT, JSON.stringify(account));
     localStorage.removeItem('mikat_drive_email');
@@ -434,7 +456,10 @@
       updateStatus('Çevrimdışı. Kayıtlar bu cihazda tutuluyor.');
       return;
     }
-    const clientId = read(CLIENT);
+    const clientId = configuredClientId();
+    if (interactive && window.mikatGoogle && !window.mikatGoogle.account() && !readJson(ACCOUNT)) {
+      return window.mikatGoogle.open();
+    }
     const existingGrant = validGrant();
     if (!existingGrant && !interactive) {
       if (readJson(ACCOUNT)) updateStatus('Drive erişimini yenilemek için eşitleme düğmesine basın.');
@@ -499,11 +524,11 @@
       if (id !== read(CLIENT)) disconnect();
       if (id) {
         localStorage.setItem(CLIENT, id);
-        prepareGoogle();
       } else {
         localStorage.removeItem(CLIENT);
       }
-      updateStatus(id ? 'İstemci kimliği kaydedildi. Google ile bağlanabilirsiniz.' : 'İstemci kimliği kaldırıldı.');
+      if (window.mikatGoogle) window.dispatchEvent(new CustomEvent('mikat:google-config'));
+      updateStatus(id ? 'Kişisel Google projesi kaydedildi. Yeniden giriş yapabilirsiniz.' : 'Mikat’ın standart Google bağlantısı kullanılacak.');
     } catch {
       updateStatus('İstemci kimliği tarayıcıya kaydedilemedi.', 'error');
     }
@@ -512,10 +537,22 @@
   function init() {
     if (!document.getElementById('driveHeaderBtn')) return;
     grant = readJson(TOKEN, sessionStorage);
-    document.getElementById('driveHeaderBtn').addEventListener('click', () => syncNow());
+    document.getElementById('driveHeaderBtn').addEventListener('click', () => {
+      if (window.mikatGoogle && !readJson(ACCOUNT)) {
+        showSettings();
+        if (!window.mikatGoogle.account()) return window.mikatGoogle.open();
+        return;
+      }
+      return syncNow();
+    });
     document.getElementById('driveSyncNowBtn').addEventListener('click', () => syncNow());
     document.getElementById('driveDisconnectBtn').addEventListener('click', disconnect);
     document.getElementById('driveConfigBtn').addEventListener('click', saveClientId);
+    window.addEventListener('mikat:google-account', event => {
+      const linked = readJson(ACCOUNT);
+      if (!event.detail.account || (linked && !matchesSignedInAccount(linked))) disconnect();
+      else render();
+    });
     if (filePage) {
       runSync(false);
       return;
@@ -531,13 +568,11 @@
           showConflict(null);
           updateStatus('');
         }
-        if (read(CLIENT)) prepareGoogle();
       }
       if (event.key === CURSOR) render();
     });
     document.addEventListener('visibilitychange', () => { if (!document.hidden) runSync(false); });
     setInterval(() => { if (!document.hidden) runSync(false); }, 60000);
-    if (read(CLIENT)) prepareGoogle();
     render();
     runSync(false);
   }
